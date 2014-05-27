@@ -1,23 +1,27 @@
-From 4aeebb9d835ad4a41c7938cc89945d8c5e64148b Mon Sep 17 00:00:00 2001
+From 58eacc1660804238ddceee6bccc8334bc1a9b391 Mon Sep 17 00:00:00 2001
 From: Victor Seva <linuxmaniac@torreviejawireless.org>
 Date: Sat, 24 May 2014 23:54:50 +0200
 Subject: [PATCH] debugger: cfgtest. WIP.
 
 ---
  modules/debugger/Makefile       |   1 +
- modules/debugger/debugger_api.c | 298 +++++++++++++++++++++++++++++++++++++++-
+ modules/debugger/debugger_api.c | 344 +++++++++++++++++++++++++++++++++++++++-
  modules/debugger/debugger_api.h |   4 +
  modules/debugger/debugger_mod.c |  10 ++
- 4 files changed, 312 insertions(+), 1 deletion(-)
+ 4 files changed, 352 insertions(+), 7 deletions(-)
 
+diff --git a/modules/debugger/Makefile b/modules/debugger/Makefile
+index a87111c..f76f588 100644
 --- a/modules/debugger/Makefile
 +++ b/modules/debugger/Makefile
-@@ -11,4 +11,5 @@
+@@ -11,4 +11,5 @@ DEFS+=-DKAMAILIO_MOD_INTERFACE
  
  SERLIBPATH=../../lib
  SER_LIBS+=$(SERLIBPATH)/srutils/srutils
 +SER_LIBS+=$(SERLIBPATH)/kcore/kcore
  include ../../Makefile.modules
+diff --git a/modules/debugger/debugger_api.c b/modules/debugger/debugger_api.c
+index 9655491..0e85791 100644
 --- a/modules/debugger/debugger_api.c
 +++ b/modules/debugger/debugger_api.c
 @@ -41,6 +41,7 @@
@@ -28,7 +32,7 @@ Subject: [PATCH] debugger: cfgtest. WIP.
  
  #include "debugger_act.h"
  #include "debugger_api.h"
-@@ -76,6 +77,7 @@
+@@ -76,6 +77,7 @@ str *dbg_get_state_name(int t)
  #define DBG_CFGTRACE_ON	(1<<0)
  #define DBG_ABKPOINT_ON	(1<<1)
  #define DBG_LBKPOINT_ON	(1<<2)
@@ -36,7 +40,7 @@ Subject: [PATCH] debugger: cfgtest. WIP.
  
  static str _dbg_status_list[] = {
  	str_init("cfgtrace-on"),
-@@ -84,6 +86,8 @@
+@@ -84,6 +86,8 @@ static str _dbg_status_list[] = {
  	str_init("abkpoint-off"),
  	str_init("lbkpoint-on"),
  	str_init("lbkpoint-off"),
@@ -45,7 +49,7 @@ Subject: [PATCH] debugger: cfgtest. WIP.
  	{0, 0}
  };
  
-@@ -95,6 +99,8 @@
+@@ -95,6 +99,8 @@ str *dbg_get_status_name(int t)
  		return &_dbg_status_list[2];
  	if(t&DBG_LBKPOINT_ON)
  		return &_dbg_status_list[4];
@@ -54,7 +58,7 @@ Subject: [PATCH] debugger: cfgtest. WIP.
  
  	return &_dbg_state_list[0];
  }
-@@ -190,6 +196,31 @@
+@@ -195,6 +201,32 @@ int _dbg_step_loops = 200;
  int _dbg_reset_msgid = 0;
  
  /**
@@ -65,7 +69,8 @@ Subject: [PATCH] debugger: cfgtest. WIP.
 +typedef struct _dbg_cfgt_node
 +{
 +	srjson_doc_t jdoc;
-+	str id;
++	str uuid;
++	int msgid;
 +	str route;
 +	srjson_t *in, *out, *flow;
 +} dbg_cfgt_node_t, *dbg_cfgt_node_p;
@@ -80,13 +85,13 @@ Subject: [PATCH] debugger: cfgtest. WIP.
 +int _dbg_cfgt_create_node(str *msg_in);
 +int _dbg_cfgt_get_hdr(struct sip_msg *msg, str *res);
 +int _dbg_cfgt_save(void);
-+int _dbg_cfgt_set_dump(void);
++int _dbg_cfgt_set_dump(struct sip_msg *msg);
 +
 +/**
   *
   */
  typedef struct _dbg_cmd
-@@ -212,6 +243,7 @@
+@@ -217,6 +249,7 @@ typedef struct _dbg_pid
  	gen_lock_t *lock;
  	unsigned int reset_msgid; /* flag to reset the id */
  	unsigned int msgid_base; /* real id since the reset */
@@ -94,7 +99,7 @@ Subject: [PATCH] debugger: cfgtest. WIP.
  } dbg_pid_t;
  
  /**
-@@ -296,6 +328,9 @@
+@@ -301,6 +334,9 @@ int dbg_cfg_trace(void *data)
      pv_value_t val;
  	void **srevp;
  	str *an;
@@ -104,7 +109,7 @@ Subject: [PATCH] debugger: cfgtest. WIP.
  
  	srevp = (void**)data;
  
-@@ -329,6 +364,52 @@
+@@ -334,6 +370,57 @@ int dbg_cfg_trace(void *data)
  				);
  		}
  	}
@@ -117,7 +122,12 @@ Subject: [PATCH] debugger: cfgtest. WIP.
 +		}
 +		else
 +		{
-+			if(node->id.len==0 && _dbg_cfgt_get_hdr(msg, &node->id)!=0)
++			if(node->msgid==0)
++			{
++				node->msgid = msg->id;
++				LM_DBG("msgid:%d\n", node->msgid);
++			}
++			if(node->uuid.len==0 && _dbg_cfgt_get_hdr(msg, &node->uuid)!=0)
 +			{
 +				LM_ERR("cannot get value of cfgtest uuid header!!\n");
 +			}
@@ -146,7 +156,7 @@ Subject: [PATCH] debugger: cfgtest. WIP.
 +					{
 +						LM_ERR("Cannot copy route name\n");
 +					}
-+					if(_dbg_cfgt_set_dump()<0)
++					if(_dbg_cfgt_set_dump(msg)<0)
 +					{
 +						LM_ERR("Cannot get dump vars\n");
 +					}
@@ -157,7 +167,7 @@ Subject: [PATCH] debugger: cfgtest. WIP.
  	if(!(_dbg_pid_list[process_no].set&DBG_ABKPOINT_ON))
  	{
  		/* no breakpoints to be considered */
-@@ -563,6 +644,9 @@
+@@ -568,6 +655,9 @@ int dbg_init_mypid(void)
  		_dbg_pid_list[process_no].set |= DBG_ABKPOINT_ON;
  	if(_dbg_cfgtrace==1)
  		_dbg_pid_list[process_no].set |= DBG_CFGTRACE_ON;
@@ -167,7 +177,55 @@ Subject: [PATCH] debugger: cfgtest. WIP.
  	if(_dbg_reset_msgid==1)
  	{
  		LM_DBG("[%d] create locks\n", process_no);
-@@ -1786,4 +1870,221 @@
+@@ -1622,7 +1712,8 @@ int _dbg_get_obj_xavp_vals(struct sip_msg *msg,
+ 	return 0;
+ }
+ 
+-int _dbg_get_json(struct sip_msg* msg, unsigned int mask, srjson_doc_t *jdoc)
++int _dbg_get_json(struct sip_msg* msg, unsigned int mask,
++	srjson_doc_t *jdoc, srjson_t *head)
+ {
+ 	int i;
+ 	pv_value_t value;
+@@ -1637,8 +1728,8 @@ int _dbg_get_json(struct sip_msg* msg, unsigned int mask, srjson_doc_t *jdoc)
+ 		LM_ERR("cannot access pv_cache\n");
+ 		return -1;
+ 	}
+-	if(jdoc==NULL){
+-		LM_ERR("jdoc is null\n");
++	if(jdoc==NULL||head==NULL){
++		LM_ERR("jdoc or head is null\n");
+ 		return -1;
+ 	}
+ 
+@@ -1748,7 +1839,7 @@ int _dbg_get_json(struct sip_msg* msg, unsigned int mask, srjson_doc_t *jdoc)
+ 			}
+ 			if(jobj!=NULL)
+ 			{
+-				srjson_AddItemToObject(jdoc, jdoc->root, iname, jobj);
++				srjson_AddItemToObject(jdoc, head, iname, jobj);
+ 			}
+ 			el = el->next;
+ 		}
+@@ -1756,7 +1847,7 @@ int _dbg_get_json(struct sip_msg* msg, unsigned int mask, srjson_doc_t *jdoc)
+ 	return 0;
+ 
+ error:
+-	srjson_DestroyDoc(jdoc);
++	srjson_Delete(jdoc, head);
+ 	return -1;
+ }
+ 
+@@ -1776,7 +1867,7 @@ int dbg_dump_json(struct sip_msg* msg, unsigned int mask, int level)
+ 		}
+ 	}
+ 
+-	if(_dbg_get_json(msg, mask, &jdoc)<0) return -1;
++	if(_dbg_get_json(msg, mask, &jdoc, jdoc.root)<0) goto error;
+ 	output = srjson_PrintUnformatted(&jdoc, jdoc.root);
+ 	if(output==NULL)
+ 	{
+@@ -1791,4 +1882,243 @@ int dbg_dump_json(struct sip_msg* msg, unsigned int mask, int level)
  error:
  	srjson_DestroyDoc(&jdoc);
  	return -1;
@@ -309,15 +367,24 @@ Subject: [PATCH] debugger: cfgtest. WIP.
 +	return 1; /* not found */
 +}
 +
-+int _dbg_cfgt_get_filename(str id, str *dest)
++int _dbg_cfgt_get_filename(int msgid, str uuid, str *dest)
 +{
-+	if(dest==NULL || id.len == 0) return -1;
-+	dest->len = _dbg_cfgt_basedir.len + id.len + 6;
++	int i, lid;
++	char *sid;
++	if(dest==NULL || uuid.len == 0) return -1;
++	sid = sint2str(msgid, &lid);
++	dest->len = _dbg_cfgt_basedir.len + uuid.len + lid + 7;
 +	dest->s = (char *) pkg_malloc(dest->len*sizeof(char));
 +	if(dest->s==NULL) return -1;
 +	strncpy(dest->s, _dbg_cfgt_basedir.s, _dbg_cfgt_basedir.len);
-+	strncpy(dest->s+_dbg_cfgt_basedir.len, id.s, id.len);
-+	strncpy(dest->s+_dbg_cfgt_basedir.len+id.len, ".json\0", 6);
++	i = _dbg_cfgt_basedir.len;
++	strncpy(dest->s+i, uuid.s, uuid.len);
++	i = i + uuid.len;
++	strncpy(dest->s+i, "/", 1);
++	i = i + 1;
++	strncpy(dest->s+i, sid, lid);
++	i = i + lid;
++	strncpy(dest->s+i, ".json\0", 6);
 +	return 0;
 +}
 +
@@ -325,7 +392,7 @@ Subject: [PATCH] debugger: cfgtest. WIP.
 +{
 +	dbg_cfgt_node_p node = _dbg_pid_list[process_no].cfgt_node;
 +	srjson_DestroyDoc(&node->jdoc);
-+	if(node->id.s) pkg_free(node->id.s);
++	if(node->uuid.s) pkg_free(node->uuid.s);
 +	pkg_free(_dbg_pid_list[process_no].cfgt_node);
 +	_dbg_pid_list[process_no].cfgt_node = NULL;
 +}
@@ -340,7 +407,7 @@ Subject: [PATCH] debugger: cfgtest. WIP.
 +	int res = -1;
 +
 +	if (node==NULL) return -1;
-+	if(_dbg_cfgt_get_filename(node->id, &filename)<0)
++	if(_dbg_cfgt_get_filename(node->msgid, node->uuid, &filename)<0)
 +	{
 +		LM_ERR("Cannot get filename\n");
 +		res = -1;
@@ -375,25 +442,40 @@ Subject: [PATCH] debugger: cfgtest. WIP.
 +	return res;
 +}
 +
-+int _dbg_cfgt_set_dump(void)
++int _dbg_cfgt_set_dump(struct sip_msg *msg)
 +{
-+	srjson_t *f;
++	srjson_t *f, *vars;
 +	dbg_cfgt_node_p node = _dbg_pid_list[process_no].cfgt_node;
 +
-+	f = srjson_CreateArray(&node->jdoc);
-+	if(f==NULL)
++	vars = srjson_CreateObject(&node->jdoc);
++	if(vars==NULL)
 +	{
 +		LM_ERR("cannot create json object\n");
 +		return -1;
 +	}
-+	srjson_AddStrItemToObject(&node->jdoc, node->flow,
-+		node->route.s, node->route.len, f);
++	if(_dbg_get_json(msg, 30, &node->jdoc, vars)<0)
++	{
++		LM_ERR("cannot get var info\n");
++		return -1;
++	}
++	f = srjson_CreateObject(&node->jdoc);
++	if(f==NULL)
++	{
++		LM_ERR("cannot create json object\n");
++		srjson_Delete(&node->jdoc, vars);
++		return -1;
++	}
++	srjson_AddStrItemToObject(&node->jdoc, f,
++		node->route.s, node->route.len, vars);
++	srjson_AddItemToArray(&node->jdoc, node->flow, f);
 +	LM_DBG("node[%.*s] flow created\n", node->route.len, node->route.s);
 +	return 0;
 +}
+diff --git a/modules/debugger/debugger_api.h b/modules/debugger/debugger_api.h
+index 011013a..d0c1a5a 100644
 --- a/modules/debugger/debugger_api.h
 +++ b/modules/debugger/debugger_api.h
-@@ -57,5 +57,9 @@
+@@ -57,5 +57,9 @@ int dbg_msgid_filter(struct sip_msg *msg, unsigned int flags, void *bar);
  #define DBG_DP_OTHER		16
  #define DBG_DP_ALL			31
  int dbg_dump_json(struct sip_msg* msg, unsigned int mask, int level);
@@ -403,9 +485,11 @@ Subject: [PATCH] debugger: cfgtest. WIP.
 +unsigned short dbg_cfgt_avp_type;
  #endif
  
+diff --git a/modules/debugger/debugger_mod.c b/modules/debugger/debugger_mod.c
+index 8434dde..b9e7d12 100644
 --- a/modules/debugger/debugger_mod.c
 +++ b/modules/debugger/debugger_mod.c
-@@ -61,6 +61,8 @@
+@@ -62,6 +62,8 @@ extern char *_dbg_cfgtrace_lname;
  extern int _dbg_step_usleep;
  extern int _dbg_step_loops;
  extern int _dbg_reset_msgid;
@@ -414,7 +498,7 @@ Subject: [PATCH] debugger: cfgtest. WIP.
  
  static char * _dbg_cfgtrace_facility_str = 0;
  static int _dbg_log_assign = 0;
-@@ -91,6 +93,8 @@
+@@ -93,6 +95,8 @@ static param_export_t params[]={
  	{"mod_level",         STR_PARAM|USE_FUNC_PARAM, (void*)dbg_mod_level_param},
  	{"reset_msgid",       INT_PARAM, &_dbg_reset_msgid},
  	{"cfgpkgcheck",       INT_PARAM, &_dbg_cfgpkgcheck},
@@ -423,7 +507,7 @@ Subject: [PATCH] debugger: cfgtest. WIP.
  	{0, 0, 0}
  };
  
-@@ -166,6 +170,12 @@
+@@ -168,6 +172,12 @@ static int mod_init(void)
  			return -1;
  		}
  	}
@@ -436,3 +520,6 @@ Subject: [PATCH] debugger: cfgtest. WIP.
  	return dbg_init_bp_list();
  }
  
+-- 
+2.0.0.rc2
+
