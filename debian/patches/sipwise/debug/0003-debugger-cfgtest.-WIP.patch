@@ -1,0 +1,444 @@
+From 4aeebb9d835ad4a41c7938cc89945d8c5e64148b Mon Sep 17 00:00:00 2001
+From: Victor Seva <linuxmaniac@torreviejawireless.org>
+Date: Sat, 24 May 2014 23:54:50 +0200
+Subject: [PATCH] debugger: cfgtest. WIP.
+
+---
+ modules/debugger/Makefile       |   1 +
+ modules/debugger/debugger_api.c | 298 +++++++++++++++++++++++++++++++++++++++-
+ modules/debugger/debugger_api.h |   4 +
+ modules/debugger/debugger_mod.c |  10 ++
+ 4 files changed, 312 insertions(+), 1 deletion(-)
+
+diff --git a/modules/debugger/Makefile b/modules/debugger/Makefile
+index a87111c..f76f588 100644
+--- a/modules/debugger/Makefile
++++ b/modules/debugger/Makefile
+@@ -11,4 +11,5 @@ DEFS+=-DKAMAILIO_MOD_INTERFACE
+ 
+ SERLIBPATH=../../lib
+ SER_LIBS+=$(SERLIBPATH)/srutils/srutils
++SER_LIBS+=$(SERLIBPATH)/kcore/kcore
+ include ../../Makefile.modules
+diff --git a/modules/debugger/debugger_api.c b/modules/debugger/debugger_api.c
+index 9655491..24e6092 100644
+--- a/modules/debugger/debugger_api.c
++++ b/modules/debugger/debugger_api.c
+@@ -41,6 +41,7 @@
+ #include "../../lib/srutils/srjson.h"
+ #include "../../xavp.h"
+ #include "../pv/pv_xavp.h"
++#include "../../lib/kcore/cmpapi.h"
+ 
+ #include "debugger_act.h"
+ #include "debugger_api.h"
+@@ -76,6 +77,7 @@ str *dbg_get_state_name(int t)
+ #define DBG_CFGTRACE_ON	(1<<0)
+ #define DBG_ABKPOINT_ON	(1<<1)
+ #define DBG_LBKPOINT_ON	(1<<2)
++#define DBG_CFGTEST_ON	(1<<3)
+ 
+ static str _dbg_status_list[] = {
+ 	str_init("cfgtrace-on"),
+@@ -84,6 +86,8 @@ static str _dbg_status_list[] = {
+ 	str_init("abkpoint-off"),
+ 	str_init("lbkpoint-on"),
+ 	str_init("lbkpoint-off"),
++	str_init("cfgtest-on"),
++	str_init("cfgtest-off"),
+ 	{0, 0}
+ };
+ 
+@@ -95,6 +99,8 @@ str *dbg_get_status_name(int t)
+ 		return &_dbg_status_list[2];
+ 	if(t&DBG_LBKPOINT_ON)
+ 		return &_dbg_status_list[4];
++	if(t&DBG_CFGTEST_ON)
++		return &_dbg_status_list[6];
+ 
+ 	return &_dbg_state_list[0];
+ }
+@@ -195,6 +201,31 @@ int _dbg_step_loops = 200;
+ int _dbg_reset_msgid = 0;
+ 
+ /**
++ * disabled by default
++ */
++int _dbg_cfgtest = 0;
++
++typedef struct _dbg_cfgt_node
++{
++	srjson_doc_t jdoc;
++	str id;
++	str route;
++	srjson_t *in, *out, *flow;
++} dbg_cfgt_node_t, *dbg_cfgt_node_p;
++/** TODO **/
++str _dbg_cfgt_basedir = {"/tmp/",5};
++str _dbg_cfgt_avp_param = {"$avp(s:route_name)", 18};
++pv_elem_p _dbg_cfgt_elem = NULL;
++
++/** defined later */
++int dbg_cfgt_msgin(void *data);
++int dbg_cfgt_msgout(void *data);
++int _dbg_cfgt_create_node(str *msg_in);
++int _dbg_cfgt_get_hdr(struct sip_msg *msg, str *res);
++int _dbg_cfgt_save(void);
++int _dbg_cfgt_set_dump(void);
++
++/**
+  *
+  */
+ typedef struct _dbg_cmd
+@@ -217,6 +248,7 @@ typedef struct _dbg_pid
+ 	gen_lock_t *lock;
+ 	unsigned int reset_msgid; /* flag to reset the id */
+ 	unsigned int msgid_base; /* real id since the reset */
++	dbg_cfgt_node_p cfgt_node;
+ } dbg_pid_t;
+ 
+ /**
+@@ -301,6 +333,9 @@ int dbg_cfg_trace(void *data)
+     pv_value_t val;
+ 	void **srevp;
+ 	str *an;
++	dbg_cfgt_node_p node;
++	str route = STR_NULL;
++	str route_null = {"<null>", 6};
+ 
+ 	srevp = (void**)data;
+ 
+@@ -334,6 +369,52 @@ int dbg_cfg_trace(void *data)
+ 				);
+ 		}
+ 	}
++	if(_dbg_pid_list[process_no].set&DBG_CFGTEST_ON)
++	{
++		node = _dbg_pid_list[process_no].cfgt_node;
++		if(!node)
++		{
++			LM_ERR("msgnode empty\n");
++		}
++		else
++		{
++			if(node->id.len==0 && _dbg_cfgt_get_hdr(msg, &node->id)!=0)
++			{
++				LM_ERR("cannot get value of cfgtest uuid header!!\n");
++			}
++			if(pv_printf_s(msg, _dbg_cfgt_elem, &route)<0)
++			{
++				LM_ERR("Cannot get route name by avp[%.*s]\n",
++					_dbg_cfgt_avp_param.len, _dbg_cfgt_avp_param.s);
++			}
++			else
++			{
++				if(STR_EQ(route, route_null)){
++					LM_ERR("Cannot get route name by avp[%.*s]\n",
++					_dbg_cfgt_avp_param.len, _dbg_cfgt_avp_param.s);
++				}
++				else if(!STR_EQ(route, node->route))
++				{
++					LM_DBG("Change to route[%.*s]. dump vars\n",
++						route.len, route.s);
++					if(node->route.s)
++					{
++						pkg_free(node->route.s);
++						node->route.len = 0;
++						node->route.s = NULL;
++					}
++					if(str_copy(&route, &node->route)<0)
++					{
++						LM_ERR("Cannot copy route name\n");
++					}
++					if(_dbg_cfgt_set_dump()<0)
++					{
++						LM_ERR("Cannot get dump vars\n");
++					}
++				}
++			}
++		}
++	}
+ 	if(!(_dbg_pid_list[process_no].set&DBG_ABKPOINT_ON))
+ 	{
+ 		/* no breakpoints to be considered */
+@@ -568,6 +649,9 @@ int dbg_init_mypid(void)
+ 		_dbg_pid_list[process_no].set |= DBG_ABKPOINT_ON;
+ 	if(_dbg_cfgtrace==1)
+ 		_dbg_pid_list[process_no].set |= DBG_CFGTRACE_ON;
++	if(_dbg_cfgtest==1){
++		_dbg_pid_list[process_no].set |= DBG_CFGTEST_ON;
++	}
+ 	if(_dbg_reset_msgid==1)
+ 	{
+ 		LM_DBG("[%d] create locks\n", process_no);
+@@ -1791,4 +1875,216 @@ int dbg_dump_json(struct sip_msg* msg, unsigned int mask, int level)
+ error:
+ 	srjson_DestroyDoc(&jdoc);
+ 	return -1;
+-}
+\ No newline at end of file
++}
++
++int dbg_cfgt_msgin(void *data)
++{
++	str *buf = (str *) data;
++	if(buf==NULL) return 0;
++	LM_DBG("msg in:{%.*s}\n", buf->len, buf->s);
++	_dbg_cfgt_save();
++	return _dbg_cfgt_create_node(buf);
++}
++
++int dbg_cfgt_msgout(void *data)
++{
++	dbg_cfgt_node_p node;
++	srjson_t *jobj;
++	str *buf = (str *) data;
++	if(buf==NULL) return 0;
++	LM_DBG("msg out:{%.*s}\n", buf->len, buf->s);
++	node = _dbg_pid_list[process_no].cfgt_node;
++	if(node)
++	{
++		jobj = srjson_CreateStr(&node->jdoc, buf->s, buf->len);
++		if(jobj==NULL)
++		{
++			LM_ERR("cannot create json object\n");
++			return -1;
++		}
++		srjson_AddItemToArray(&node->jdoc, node->out, jobj);
++		return _dbg_cfgt_save();
++	}
++	LM_ERR("msgnode empty\n");
++	return -1;
++}
++
++int dbg_init_cfgtest(void)
++{
++	if (_dbg_cfgt_avp_param.s && _dbg_cfgt_avp_param.len > 0)
++	{
++		if (pv_parse_format(&_dbg_cfgt_avp_param, &_dbg_cfgt_elem)<0)
++		{
++			LM_ERR("malformed or non AVP %.*s AVP definition\n",
++					_dbg_cfgt_avp_param.len, _dbg_cfgt_avp_param.s);
++			return -1;
++		}
++	}
++	sr_event_register_cb(SREV_NET_DATA_IN, dbg_cfgt_msgin);
++	sr_event_register_cb(SREV_NET_DATA_OUT, dbg_cfgt_msgout);
++	return 0;
++}
++
++int _dbg_cfgt_create_node(str *msg_in)
++{
++	dbg_cfgt_node_p node;
++
++	node = (dbg_cfgt_node_p) pkg_malloc(sizeof(dbg_cfgt_node_t));
++	if(node==NULL)
++	{
++		LM_ERR("cannot allocate cfgtest msgnode\n");
++		return -1;
++	}
++	memset(node, 0, sizeof(dbg_cfgt_node_t));
++	srjson_InitDoc(&node->jdoc, NULL);
++	node->jdoc.root = srjson_CreateObject(&node->jdoc);
++	if(node->jdoc.root==NULL)
++	{
++		LM_ERR("cannot create json root\n");
++		goto error;
++	}
++	node->flow = srjson_CreateArray(&node->jdoc);
++	if(node->flow==NULL)
++	{
++		LM_ERR("cannot create json object\n");
++		goto error;
++	}
++	srjson_AddItemToObject(&node->jdoc, node->jdoc.root, "flow\0", node->flow);
++	node->in = srjson_CreateStr(&node->jdoc, msg_in->s, msg_in->len);
++	if(node->in==NULL)
++	{
++		LM_ERR("cannot create json object\n");
++		goto error;
++	}
++	srjson_AddItemToObject(&node->jdoc, node->jdoc.root, "in\0", node->in);
++	node->out = srjson_CreateArray(&node->jdoc);
++	if(node->out==NULL)
++	{
++		LM_ERR("cannot create json object\n");
++		goto error;
++	}
++	srjson_AddItemToObject(&node->jdoc, node->jdoc.root, "out\0", node->out);
++	LM_DBG("node created\n");
++	_dbg_pid_list[process_no].cfgt_node = node;
++	return 0;
++
++error:
++	srjson_DestroyDoc(&node->jdoc);
++	pkg_free(node);
++	_dbg_pid_list[process_no].cfgt_node = NULL;
++	return -1;
++}
++
++int _dbg_cfgt_get_hdr(struct sip_msg *msg, str *res)
++{
++	str name = {"P-NGCP-CFGTEST", 14};
++	struct hdr_field *hf;
++
++	if(msg==NULL || res==NULL)
++		return -1;
++
++	/* we need to be sure we have parsed all headers */
++	if(parse_headers(msg, HDR_EOH_F, 0)<0)
++	{
++		LM_ERR("error parsing headers\n");
++		return -1;
++	}
++
++	for (hf=msg->headers; hf; hf=hf->next)
++	{
++		if (cmp_hdrname_str(&hf->name, &name)==0)
++		{
++			if(str_copy(&hf->body, res)<0)
++			{
++				LM_ERR("error copying header\n");
++				return -1;
++			}
++			LM_DBG("cfgtest uuid:%.*s\n", res->len, res->s);
++			return 0;
++		}
++	}
++	return 1; /* not found */
++}
++
++int _dbg_cfgt_get_filename(str id, str *dest)
++{
++	if(dest==NULL || id.len == 0) return -1;
++	dest->len = _dbg_cfgt_basedir.len + id.len + 6;
++	dest->s = (char *) pkg_malloc(dest->len*sizeof(char));
++	if(dest->s==NULL) return -1;
++	strncpy(dest->s, _dbg_cfgt_basedir.s, _dbg_cfgt_basedir.len);
++	strncpy(dest->s+_dbg_cfgt_basedir.len, id.s, id.len);
++	strncpy(dest->s+_dbg_cfgt_basedir.len+id.len, ".json\0", 6);
++	return 0;
++}
++
++void _dbg_cfgt_remove_node(void)
++{
++	dbg_cfgt_node_p node = _dbg_pid_list[process_no].cfgt_node;
++	srjson_DestroyDoc(&node->jdoc);
++	if(node->id.s) pkg_free(node->id.s);
++	pkg_free(_dbg_pid_list[process_no].cfgt_node);
++	_dbg_pid_list[process_no].cfgt_node = NULL;
++}
++
++int _dbg_cfgt_save(void)
++{
++	FILE *f = NULL;
++	str filename = STR_NULL;
++	char *buf = NULL;
++	dbg_cfgt_node_p node = _dbg_pid_list[process_no].cfgt_node;
++	size_t len;
++	int res = -1;
++
++	if (node==NULL) return -1;
++	if(_dbg_cfgt_get_filename(node->id, &filename)<0)
++	{
++		LM_ERR("Cannot get filename\n");
++		res = -1;
++		goto clean;
++	}
++	f = fopen ( filename.s, "w");
++	if(f==NULL)
++	{
++		LM_ERR("Cannot open %.*s for write\n", filename.len, filename.s);
++		res = -1;
++		goto clean;
++	}
++	buf = srjson_PrintUnformatted(&node->jdoc, node->jdoc.root);
++	if(buf==NULL)
++	{
++		LM_ERR("Cannot get the json string\n");
++		fclose(f);
++		res = -1;
++		goto clean;
++	}
++	len = strlen(buf);
++	LM_DBG("buf size:%lu\n", len);
++	fwrite(buf, len, 1, f);
++	fclose(f);
++	res = 0;
++
++clean:
++	if(filename.s) pkg_free(filename.s);
++	if(buf) node->jdoc.free_fn(buf);
++	_dbg_cfgt_remove_node();
++	LM_DBG("node deleted\n");
++	return res;
++}
++
++int _dbg_cfgt_set_dump(void)
++{
++	srjson_t *f;
++	dbg_cfgt_node_p node = _dbg_pid_list[process_no].cfgt_node;
++
++	f = srjson_CreateArray(&node->jdoc);
++	if(f==NULL)
++	{
++		LM_ERR("cannot create json object\n");
++		return -1;
++	}
++	srjson_AddStrItemToObject(&node->jdoc, node->flow,
++		node->route.s, node->route.len, f);
++	LM_DBG("node[%.*s] flow created\n", node->route.len, node->route.s);
++	return 0;
++}
+diff --git a/modules/debugger/debugger_api.h b/modules/debugger/debugger_api.h
+index 011013a..d0c1a5a 100644
+--- a/modules/debugger/debugger_api.h
++++ b/modules/debugger/debugger_api.h
+@@ -57,5 +57,9 @@ int dbg_msgid_filter(struct sip_msg *msg, unsigned int flags, void *bar);
+ #define DBG_DP_OTHER		16
+ #define DBG_DP_ALL			31
+ int dbg_dump_json(struct sip_msg* msg, unsigned int mask, int level);
++
++int dbg_init_cfgtest(void);
++int_str dbg_cfgt_avp_name;
++unsigned short dbg_cfgt_avp_type;
+ #endif
+ 
+diff --git a/modules/debugger/debugger_mod.c b/modules/debugger/debugger_mod.c
+index 8434dde..b9e7d12 100644
+--- a/modules/debugger/debugger_mod.c
++++ b/modules/debugger/debugger_mod.c
+@@ -62,6 +62,8 @@ extern char *_dbg_cfgtrace_lname;
+ extern int _dbg_step_usleep;
+ extern int _dbg_step_loops;
+ extern int _dbg_reset_msgid;
++extern int _dbg_cfgtest;
++extern str _dbg_cfgt_avp_param;
+ 
+ static char * _dbg_cfgtrace_facility_str = 0;
+ static int _dbg_log_assign = 0;
+@@ -93,6 +95,8 @@ static param_export_t params[]={
+ 	{"mod_level",         STR_PARAM|USE_FUNC_PARAM, (void*)dbg_mod_level_param},
+ 	{"reset_msgid",       INT_PARAM, &_dbg_reset_msgid},
+ 	{"cfgpkgcheck",       INT_PARAM, &_dbg_cfgpkgcheck},
++	{"cfgtest",           INT_PARAM, &_dbg_cfgtest},
++	{"cfgt_avp",          STR_PARAM, &_dbg_cfgt_avp_param.s},
+ 	{0, 0, 0}
+ };
+ 
+@@ -168,6 +172,12 @@ static int mod_init(void)
+ 			return -1;
+ 		}
+ 	}
++	if(_dbg_cfgtest==1)
++	{
++		if (_dbg_cfgt_avp_param.s)
++			_dbg_cfgt_avp_param.len = strlen(_dbg_cfgt_avp_param.s);
++		dbg_init_cfgtest();
++	}
+ 	return dbg_init_bp_list();
+ }
+ 
+-- 
+2.0.0.rc2
+

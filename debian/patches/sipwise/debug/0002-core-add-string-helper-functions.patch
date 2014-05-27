@@ -1,0 +1,103 @@
+From 387f1bb841757f6e565df8fe12f5491b6ef37fa9 Mon Sep 17 00:00:00 2001
+From: Victor Seva <linuxmaniac@torreviejawireless.org>
+Date: Fri, 23 May 2014 22:56:48 +0200
+Subject: [PATCH] core: add string helper functions
+
+str_copy
+str_copy_shm
+str_append_shm
+---
+ str.c | 30 ++++++++++++++++++++++++++++--
+ str.h | 25 +++++++++++++++++++++++++
+ 2 files changed, 53 insertions(+), 2 deletions(-)
+
+diff --git a/str.c b/str.c
+index 913dc7b..0cbee9c 100644
+--- a/str.c
++++ b/str.c
+@@ -21,8 +21,9 @@
+ #include <string.h>
+ #include "str.h"
+ #include "mem/mem.h"
++#include "mem/shm_mem.h"
+ 
+-int str_append(str *orig, str *suffix, str *dest)
++int _str_append(str *orig, str *suffix, str *dest, unsigned int shm)
+ {
+ 	if(orig == NULL || suffix == NULL || suffix->len == 0 || dest == NULL)
+ 	{
+@@ -30,7 +31,10 @@ int str_append(str *orig, str *suffix, str *dest)
+ 		return -1;
+ 	}
+ 	dest->len = orig->len + suffix->len;
+-	dest->s = pkg_malloc(sizeof(char)*dest->len);
++	if(shm)
++		dest->s = shm_malloc(sizeof(char)*dest->len);
++	else
++		dest->s = pkg_malloc(sizeof(char)*dest->len);
+ 	if(dest->s==NULL)
+ 	{
+ 		LOG(L_ERR, "memory allocation failure\n");
+@@ -43,3 +47,25 @@ int str_append(str *orig, str *suffix, str *dest)
+ 	memcpy(dest->s+orig->len, suffix->s, suffix->len);
+ 	return 0;
+ }
++
++int str_append(str *orig, str *suffix, str *dest)
++{
++	return _str_append(orig, suffix, dest, 0);
++}
++
++int str_append_shm(str *orig, str *suffix, str *dest)
++{
++	return _str_append(orig, suffix, dest, 1);
++}
++
++int str_copy(str *orig, str *dest)
++{
++	str t = STR_NULL;
++	return _str_append(&t, orig, dest, 0);
++}
++
++int str_copy_shm(str *orig, str *dest)
++{
++	str t = STR_NULL;
++	return _str_append(&t, orig, dest, 1);
++}
+diff --git a/str.h b/str.h
+index 5414be0..2a68861 100644
+--- a/str.h
++++ b/str.h
+@@ -130,4 +130,29 @@ typedef struct _str str;
+  */
+ int str_append(str *orig, str *suffix, str *dest);
+ 
++/** Appends a sufffix
++ * @param orig is the original string
++ * @param suffix is the suffix string
++ * @param dest is the result ::str of appending suffix to orig
++ * @return 0 if ok -1 if error
++ * remember to free the dest->s share memory
++ */
++int str_append_shm(str *orig, str *suffix, str *dest);
++
++/** Copy a str in private memory
++ * @param orig is the original string
++ * @param dest is the result ::str
++ * @return 0 if ok -1 if error
++ * remember to free the dest->s private memory
++ */
++int str_copy(str *orig, str *dest);
++
++/** Copy a str in share memory
++ * @param orig is the original string
++ * @param dest is the result ::str
++ * @return 0 if ok -1 if error
++ * remember to free the dest->s share memory
++ */
++int str_copy_shm(str *orig, str *dest);
++
+ #endif
+-- 
+2.0.0.rc2
+
