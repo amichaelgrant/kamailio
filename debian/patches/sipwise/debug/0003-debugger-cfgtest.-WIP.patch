@@ -1,14 +1,14 @@
-From d7205b93933d9e34ec906d7bb62561d06927ad62 Mon Sep 17 00:00:00 2001
+From 64026ff968c387bd029cdbaef91d8a0b1cb7ba4b Mon Sep 17 00:00:00 2001
 From: Victor Seva <linuxmaniac@torreviejawireless.org>
 Date: Sat, 24 May 2014 23:54:50 +0200
 Subject: [PATCH] debugger: cfgtest. WIP.
 
 ---
  modules/debugger/Makefile       |   1 +
- modules/debugger/debugger_api.c | 505 +++++++++++++++++++++++++++++++++++++++-
+ modules/debugger/debugger_api.c | 512 +++++++++++++++++++++++++++++++++++++++-
  modules/debugger/debugger_api.h |   3 +
  modules/debugger/debugger_mod.c |  17 ++
- 4 files changed, 518 insertions(+), 8 deletions(-)
+ 4 files changed, 525 insertions(+), 8 deletions(-)
 
 diff --git a/modules/debugger/Makefile b/modules/debugger/Makefile
 index a87111c..f76f588 100644
@@ -21,7 +21,7 @@ index a87111c..f76f588 100644
 +SER_LIBS+=$(SERLIBPATH)/kcore/kcore
  include ../../Makefile.modules
 diff --git a/modules/debugger/debugger_api.c b/modules/debugger/debugger_api.c
-index 9655491..d537bf2 100644
+index 9655491..9327246 100644
 --- a/modules/debugger/debugger_api.c
 +++ b/modules/debugger/debugger_api.c
 @@ -41,6 +41,7 @@
@@ -270,7 +270,7 @@ index 9655491..d537bf2 100644
  	output = srjson_PrintUnformatted(&jdoc, jdoc.root);
  	if(output==NULL)
  	{
-@@ -1791,4 +1912,372 @@ int dbg_dump_json(struct sip_msg* msg, unsigned int mask, int level)
+@@ -1791,4 +1912,379 @@ int dbg_dump_json(struct sip_msg* msg, unsigned int mask, int level)
  error:
  	srjson_DestroyDoc(&jdoc);
  	return -1;
@@ -278,6 +278,12 @@ index 9655491..d537bf2 100644
 \ No newline at end of file
 +}
 +
++
++/*
++TODO:
++- parse first line, check if is SIP
++- parse for header cfgtest
++*/
 +int dbg_cfgt_msgin(void *data)
 +{
 +	dbg_cfgt_node_p node;
@@ -439,6 +445,7 @@ index 9655491..d537bf2 100644
 +	{
 +		LM_DBG("Initial node\n");
 +		clist_init(node, next, prev);
++		_dbg_cfgt_head = node;
 +	}
 +	_dbg_pid_list[process_no].cfgt_node = node;
 +	return 0;
