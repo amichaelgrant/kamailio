@@ -1,14 +1,14 @@
-From b60c851595d392d55e3cb6f122ece16bfa6d7f0c Mon Sep 17 00:00:00 2001
+From 9f3475ef43329274fb2cf0636f37c6f952372b8f Mon Sep 17 00:00:00 2001
 From: Victor Seva <linuxmaniac@torreviejawireless.org>
 Date: Sat, 24 May 2014 23:54:50 +0200
 Subject: [PATCH] debugger: cfgtest. WIP.
 
 ---
  modules/debugger/Makefile       |   1 +
- modules/debugger/debugger_api.c | 639 +++++++++++++++++++++++++++++++++++++++-
+ modules/debugger/debugger_api.c | 675 +++++++++++++++++++++++++++++++++++++++-
  modules/debugger/debugger_api.h |   3 +
- modules/debugger/debugger_mod.c |  17 ++
- 4 files changed, 652 insertions(+), 8 deletions(-)
+ modules/debugger/debugger_mod.c |  17 +
+ 4 files changed, 688 insertions(+), 8 deletions(-)
 
 diff --git a/modules/debugger/Makefile b/modules/debugger/Makefile
 index a87111c..f76f588 100644
@@ -21,7 +21,7 @@ index a87111c..f76f588 100644
 +SER_LIBS+=$(SERLIBPATH)/kcore/kcore
  include ../../Makefile.modules
 diff --git a/modules/debugger/debugger_api.c b/modules/debugger/debugger_api.c
-index 9655491..6a1ac4c 100644
+index 9655491..50ae34c 100644
 --- a/modules/debugger/debugger_api.c
 +++ b/modules/debugger/debugger_api.c
 @@ -41,6 +41,7 @@
@@ -282,7 +282,7 @@ index 9655491..6a1ac4c 100644
  	output = srjson_PrintUnformatted(&jdoc, jdoc.root);
  	if(output==NULL)
  	{
-@@ -1791,4 +1924,494 @@ int dbg_dump_json(struct sip_msg* msg, unsigned int mask, int level)
+@@ -1791,4 +1924,530 @@ int dbg_dump_json(struct sip_msg* msg, unsigned int mask, int level)
  error:
  	srjson_DestroyDoc(&jdoc);
  	return -1;
@@ -449,9 +449,42 @@ index 9655491..6a1ac4c 100644
 +	return 0;
 +}
 +
++void _dbg_cfgt_remove_uuid(const str *uuid)
++{
++	struct str_hash_entry *entry, *back;
++
++	if(_dbg_cfgt_uuid==NULL) return;
++	if(uuid)
++	{
++		lock_get(&_dbg_cfgt_uuid->lock);
++		entry = str_hash_get(&_dbg_cfgt_uuid->hash, uuid->s, uuid->len);
++		if(entry)
++		{
++			str_hash_del(entry);
++			shm_free(entry->key.s);
++			shm_free(entry);
++			LM_DBG("uuid[%.*s] removed from hash\n", uuid->len, uuid->s);
++		}
++		lock_release(&_dbg_cfgt_uuid->lock);
++	}
++	else
++	{
++		lock_get(&_dbg_cfgt_uuid->lock);
++		clist_foreach_safe(_dbg_cfgt_uuid->hash.table, entry, back, next)
++		{
++			LM_DBG("uuid[%.*s] removed from hash\n",
++				entry->key.len, entry->key.s);
++			str_hash_del(entry);
++			shm_free(entry->key.s);
++			shm_free(entry);
++		}
++		lock_release(&_dbg_cfgt_uuid->lock);
++	}
++}
++
 +int _dbg_cfgt_get_uuid_id(dbg_cfgt_node_p node)
 +{
-+	struct str_hash_entry *entry = NULL;
++	struct str_hash_entry *entry;
 +
 +	if(_dbg_cfgt_uuid==NULL || node->uuid.len == 0) return -1;
 +	lock_get(&_dbg_cfgt_uuid->lock);
@@ -714,7 +747,9 @@ index 9655491..6a1ac4c 100644
 +					_dbg_cfgt_print_node(node);
 +					res = res - 1;
 +				}
-+				_dbg_cfgt_remove_node(node);
++				_dbg_cfgt_remove_uuid(&node->uuid);
++				if(node!=_dbg_pid_list[process_no].cfgt_node)
++					_dbg_cfgt_remove_node(node);
 +			}
 +		}
 +	}
@@ -731,6 +766,7 @@ index 9655491..6a1ac4c 100644
 +			if(node!=_dbg_pid_list[process_no].cfgt_node)
 +				_dbg_cfgt_remove_node(node);
 +		}
++		_dbg_cfgt_remove_uuid(NULL);
 +	}
 +	return res;
 +}
