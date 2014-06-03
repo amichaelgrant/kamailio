@@ -1,14 +1,14 @@
-From 6041a6049cd398cf773cd9c63872282302acff6c Mon Sep 17 00:00:00 2001
+From d7205b93933d9e34ec906d7bb62561d06927ad62 Mon Sep 17 00:00:00 2001
 From: Victor Seva <linuxmaniac@torreviejawireless.org>
 Date: Sat, 24 May 2014 23:54:50 +0200
 Subject: [PATCH] debugger: cfgtest. WIP.
 
 ---
  modules/debugger/Makefile       |   1 +
- modules/debugger/debugger_api.c | 504 +++++++++++++++++++++++++++++++++++++++-
+ modules/debugger/debugger_api.c | 505 +++++++++++++++++++++++++++++++++++++++-
  modules/debugger/debugger_api.h |   3 +
  modules/debugger/debugger_mod.c |  17 ++
- 4 files changed, 517 insertions(+), 8 deletions(-)
+ 4 files changed, 518 insertions(+), 8 deletions(-)
 
 diff --git a/modules/debugger/Makefile b/modules/debugger/Makefile
 index a87111c..f76f588 100644
@@ -21,7 +21,7 @@ index a87111c..f76f588 100644
 +SER_LIBS+=$(SERLIBPATH)/kcore/kcore
  include ../../Makefile.modules
 diff --git a/modules/debugger/debugger_api.c b/modules/debugger/debugger_api.c
-index 9655491..25b66ec 100644
+index 9655491..d537bf2 100644
 --- a/modules/debugger/debugger_api.c
 +++ b/modules/debugger/debugger_api.c
 @@ -41,6 +41,7 @@
@@ -270,7 +270,7 @@ index 9655491..25b66ec 100644
  	output = srjson_PrintUnformatted(&jdoc, jdoc.root);
  	if(output==NULL)
  	{
-@@ -1791,4 +1912,371 @@ int dbg_dump_json(struct sip_msg* msg, unsigned int mask, int level)
+@@ -1791,4 +1912,372 @@ int dbg_dump_json(struct sip_msg* msg, unsigned int mask, int level)
  error:
  	srjson_DestroyDoc(&jdoc);
  	return -1;
@@ -497,13 +497,14 @@ index 9655491..25b66ec 100644
 +
 +int _dbg_cfgt_get_filename(int msgid, str uuid, str *dest)
 +{
-+	int i, lid, lnproc;
-+	char buff_id[INT2STR_MAX_LEN], buff_nproc[INT2STR_MAX_LEN];
-+	char *sid, *snproc;
++	int i, lid, lpid;
++	char buff_id[INT2STR_MAX_LEN], buff_pid[INT2STR_MAX_LEN];
++	char *sid, *spid;
 +	if(dest==NULL || uuid.len == 0) return -1;
 +	sid = sint2strbuf(msgid, buff_id, INT2STR_MAX_LEN, &lid);
-+	snproc = sint2strbuf(process_no, buff_nproc, INT2STR_MAX_LEN, &lnproc);
-+	dest->len = _dbg_cfgt_basedir.len + uuid.len + lid + lnproc + 8;
++	spid = sint2strbuf(_dbg_pid_list[process_no].pid,
++		buff_pid, INT2STR_MAX_LEN, &lpid);
++	dest->len = _dbg_cfgt_basedir.len + uuid.len + lid + lpid + 8;
 +	dest->s = (char *) pkg_malloc(dest->len*sizeof(char));
 +	if(dest->s==NULL) return -1;
 +	strncpy(dest->s, _dbg_cfgt_basedir.s, _dbg_cfgt_basedir.len);
@@ -512,8 +513,8 @@ index 9655491..25b66ec 100644
 +	i = i + uuid.len;
 +	strncpy(dest->s+i, "/", 1);
 +	i = i + 1;
-+	strncpy(dest->s+i, snproc, lid);
-+	i = i + lnproc;
++	strncpy(dest->s+i, spid, lid);
++	i = i + lpid;
 +	strncpy(dest->s+i, "/", 1);
 +	i = i + 1;
 +	strncpy(dest->s+i, sid, lid);
