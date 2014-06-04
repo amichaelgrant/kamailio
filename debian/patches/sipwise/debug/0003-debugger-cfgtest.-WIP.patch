@@ -1,14 +1,14 @@
-From 30acdee73bcad8c4f0f28dabf52fe47a9c863cf2 Mon Sep 17 00:00:00 2001
+From a5fc4e0920215bb4183364c725aac85dc4722b6c Mon Sep 17 00:00:00 2001
 From: Victor Seva <linuxmaniac@torreviejawireless.org>
 Date: Sat, 24 May 2014 23:54:50 +0200
 Subject: [PATCH] debugger: cfgtest. WIP.
 
 ---
  modules/debugger/Makefile       |   1 +
- modules/debugger/debugger_api.c | 736 +++++++++++++++++++++++++++++++++++++++-
+ modules/debugger/debugger_api.c | 737 +++++++++++++++++++++++++++++++++++++++-
  modules/debugger/debugger_api.h |   3 +
  modules/debugger/debugger_mod.c |  25 ++
- 4 files changed, 757 insertions(+), 8 deletions(-)
+ 4 files changed, 758 insertions(+), 8 deletions(-)
 
 diff --git a/modules/debugger/Makefile b/modules/debugger/Makefile
 index a87111c..f76f588 100644
@@ -21,7 +21,7 @@ index a87111c..f76f588 100644
 +SER_LIBS+=$(SERLIBPATH)/kcore/kcore
  include ../../Makefile.modules
 diff --git a/modules/debugger/debugger_api.c b/modules/debugger/debugger_api.c
-index 9655491..1db9d62 100644
+index 9655491..e02c3b0 100644
 --- a/modules/debugger/debugger_api.c
 +++ b/modules/debugger/debugger_api.c
 @@ -41,6 +41,7 @@
@@ -315,7 +315,7 @@ index 9655491..1db9d62 100644
  	output = srjson_PrintUnformatted(&jdoc, jdoc.root);
  	if(output==NULL)
  	{
-@@ -1791,4 +1957,558 @@ int dbg_dump_json(struct sip_msg* msg, unsigned int mask, int level)
+@@ -1791,4 +1957,559 @@ int dbg_dump_json(struct sip_msg* msg, unsigned int mask, int level)
  error:
  	srjson_DestroyDoc(&jdoc);
  	return -1;
@@ -336,10 +336,11 @@ index 9655491..1db9d62 100644
 +	str *buf = (str *) data;
 +	if(buf==NULL) return 0;
 +	LM_DBG("msg in:{%.*s}\n", buf->len, buf->s);
-+	if(_dbg_pid_list[process_no].cfgt_node)
++	node = _dbg_pid_list[process_no].cfgt_node;
++	if(node)
 +	{
-+		LM_DBG("previous node\n");
-+		_dbg_cfgt_print_node(_dbg_pid_list[process_no].cfgt_node);
++		LM_DBG("previous node[%p]\n", node);
++		_dbg_cfgt_print_node(node);
 +	}
 +	_dbg_cfgt_create_node(NULL);
 +	node = _dbg_pid_list[process_no].cfgt_node;
@@ -636,8 +637,8 @@ index 9655491..1db9d62 100644
 +	else
 +	{
 +		LM_DBG("Initial node\n");
-+		clist_init(node, next, prev);
 +		_dbg_cfgt_head = node;
++		clist_init(_dbg_cfgt_head, next, prev);
 +	}
 +	_dbg_pid_list[process_no].cfgt_node = node;
 +	return 1;
@@ -865,7 +866,7 @@ index 9655491..1db9d62 100644
 +void _dbg_cfgt_print_node(dbg_cfgt_node_p node)
 +{
 +	char *buf = NULL;
-+	if(!node) return;
++	if(!node) { LM_DBG("node NULL\n"); return; }
 +	buf = srjson_PrintUnformatted(&node->jdoc, node->jdoc.root);
 +	if(buf==NULL)
 +	{
