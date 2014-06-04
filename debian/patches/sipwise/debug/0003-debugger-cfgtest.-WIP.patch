@@ -1,14 +1,14 @@
-From f1ba460b6cd0f67d285ceb4d8a53af66ef51ffaf Mon Sep 17 00:00:00 2001
+From f1d371da5a89c685796475785a21ddf00156f27d Mon Sep 17 00:00:00 2001
 From: Victor Seva <linuxmaniac@torreviejawireless.org>
 Date: Sat, 24 May 2014 23:54:50 +0200
 Subject: [PATCH] debugger: cfgtest. WIP.
 
 ---
  modules/debugger/Makefile       |   1 +
- modules/debugger/debugger_api.c | 721 +++++++++++++++++++++++++++++++++++++++-
+ modules/debugger/debugger_api.c | 720 +++++++++++++++++++++++++++++++++++++++-
  modules/debugger/debugger_api.h |   3 +
- modules/debugger/debugger_mod.c |  17 +
- 4 files changed, 734 insertions(+), 8 deletions(-)
+ modules/debugger/debugger_mod.c |  19 ++
+ 4 files changed, 735 insertions(+), 8 deletions(-)
 
 diff --git a/modules/debugger/Makefile b/modules/debugger/Makefile
 index a87111c..f76f588 100644
@@ -21,7 +21,7 @@ index a87111c..f76f588 100644
 +SER_LIBS+=$(SERLIBPATH)/kcore/kcore
  include ../../Makefile.modules
 diff --git a/modules/debugger/debugger_api.c b/modules/debugger/debugger_api.c
-index 9655491..bc6b975 100644
+index 9655491..8fd3c1e 100644
 --- a/modules/debugger/debugger_api.c
 +++ b/modules/debugger/debugger_api.c
 @@ -41,6 +41,7 @@
@@ -58,7 +58,7 @@ index 9655491..bc6b975 100644
  
  	return &_dbg_state_list[0];
  }
-@@ -195,6 +201,49 @@ int _dbg_step_loops = 200;
+@@ -195,6 +201,48 @@ int _dbg_step_loops = 200;
  int _dbg_reset_msgid = 0;
  
  /**
@@ -87,8 +87,7 @@ index 9655491..bc6b975 100644
 +
 +dbg_cfgt_node_p _dbg_cfgt_head = NULL;
 +dbg_cfgt_hash_p _dbg_cfgt_uuid = NULL;
-+/* TODO use a config parameter */
-+str _dbg_cfgt_basedir = {"/tmp/",5};
++str _dbg_cfgt_basedir = {"/tmp/", 5};
 +str _dbg_cfgt_avp_param = {"$avp(s:route_name)", 18};
 +pv_elem_p _dbg_cfgt_elem = NULL;
 +
@@ -108,7 +107,7 @@ index 9655491..bc6b975 100644
   *
   */
  typedef struct _dbg_cmd
-@@ -217,6 +266,8 @@ typedef struct _dbg_pid
+@@ -217,6 +265,8 @@ typedef struct _dbg_pid
  	gen_lock_t *lock;
  	unsigned int reset_msgid; /* flag to reset the id */
  	unsigned int msgid_base; /* real id since the reset */
@@ -117,7 +116,7 @@ index 9655491..bc6b975 100644
  } dbg_pid_t;
  
  /**
-@@ -301,6 +352,9 @@ int dbg_cfg_trace(void *data)
+@@ -301,6 +351,9 @@ int dbg_cfg_trace(void *data)
      pv_value_t val;
  	void **srevp;
  	str *an;
@@ -127,7 +126,7 @@ index 9655491..bc6b975 100644
  
  	srevp = (void**)data;
  
-@@ -334,6 +388,48 @@ int dbg_cfg_trace(void *data)
+@@ -334,6 +387,48 @@ int dbg_cfg_trace(void *data)
  				);
  		}
  	}
@@ -176,7 +175,7 @@ index 9655491..bc6b975 100644
  	if(!(_dbg_pid_list[process_no].set&DBG_ABKPOINT_ON))
  	{
  		/* no breakpoints to be considered */
-@@ -568,7 +664,10 @@ int dbg_init_mypid(void)
+@@ -568,7 +663,10 @@ int dbg_init_mypid(void)
  		_dbg_pid_list[process_no].set |= DBG_ABKPOINT_ON;
  	if(_dbg_cfgtrace==1)
  		_dbg_pid_list[process_no].set |= DBG_CFGTRACE_ON;
@@ -188,7 +187,7 @@ index 9655491..bc6b975 100644
  	{
  		LM_DBG("[%d] create locks\n", process_no);
  		_dbg_pid_list[process_no].lock = lock_alloc();
-@@ -999,12 +1098,78 @@ static void dbg_rpc_reset_msgid(rpc_t* rpc, void* ctx){
+@@ -999,12 +1097,78 @@ static void dbg_rpc_reset_msgid(rpc_t* rpc, void* ctx){
  /**
   *
   */
@@ -267,7 +266,7 @@ index 9655491..bc6b975 100644
  	{0, 0, 0, 0}
  };
  
-@@ -1622,7 +1787,8 @@ int _dbg_get_obj_xavp_vals(struct sip_msg *msg,
+@@ -1622,7 +1786,8 @@ int _dbg_get_obj_xavp_vals(struct sip_msg *msg,
  	return 0;
  }
  
@@ -277,7 +276,7 @@ index 9655491..bc6b975 100644
  {
  	int i;
  	pv_value_t value;
-@@ -1637,8 +1803,8 @@ int _dbg_get_json(struct sip_msg* msg, unsigned int mask, srjson_doc_t *jdoc)
+@@ -1637,8 +1802,8 @@ int _dbg_get_json(struct sip_msg* msg, unsigned int mask, srjson_doc_t *jdoc)
  		LM_ERR("cannot access pv_cache\n");
  		return -1;
  	}
@@ -288,7 +287,7 @@ index 9655491..bc6b975 100644
  		return -1;
  	}
  
-@@ -1748,7 +1914,7 @@ int _dbg_get_json(struct sip_msg* msg, unsigned int mask, srjson_doc_t *jdoc)
+@@ -1748,7 +1913,7 @@ int _dbg_get_json(struct sip_msg* msg, unsigned int mask, srjson_doc_t *jdoc)
  			}
  			if(jobj!=NULL)
  			{
@@ -297,7 +296,7 @@ index 9655491..bc6b975 100644
  			}
  			el = el->next;
  		}
-@@ -1756,7 +1922,7 @@ int _dbg_get_json(struct sip_msg* msg, unsigned int mask, srjson_doc_t *jdoc)
+@@ -1756,7 +1921,7 @@ int _dbg_get_json(struct sip_msg* msg, unsigned int mask, srjson_doc_t *jdoc)
  	return 0;
  
  error:
@@ -306,7 +305,7 @@ index 9655491..bc6b975 100644
  	return -1;
  }
  
-@@ -1776,7 +1942,7 @@ int dbg_dump_json(struct sip_msg* msg, unsigned int mask, int level)
+@@ -1776,7 +1941,7 @@ int dbg_dump_json(struct sip_msg* msg, unsigned int mask, int level)
  		}
  	}
  
@@ -315,7 +314,7 @@ index 9655491..bc6b975 100644
  	output = srjson_PrintUnformatted(&jdoc, jdoc.root);
  	if(output==NULL)
  	{
-@@ -1791,4 +1957,543 @@ int dbg_dump_json(struct sip_msg* msg, unsigned int mask, int level)
+@@ -1791,4 +1956,543 @@ int dbg_dump_json(struct sip_msg* msg, unsigned int mask, int level)
  error:
  	srjson_DestroyDoc(&jdoc);
  	return -1;
@@ -875,28 +874,30 @@ index 011013a..856931a 100644
  #endif
  
 diff --git a/modules/debugger/debugger_mod.c b/modules/debugger/debugger_mod.c
-index 8434dde..7e127fb 100644
+index 8434dde..3dcb33d 100644
 --- a/modules/debugger/debugger_mod.c
 +++ b/modules/debugger/debugger_mod.c
-@@ -62,6 +62,8 @@ extern char *_dbg_cfgtrace_lname;
+@@ -62,6 +62,9 @@ extern char *_dbg_cfgtrace_lname;
  extern int _dbg_step_usleep;
  extern int _dbg_step_loops;
  extern int _dbg_reset_msgid;
 +extern int _dbg_cfgtest;
 +extern str _dbg_cfgt_avp_param;
++extern str _dbg_cfgt_basedir;
  
  static char * _dbg_cfgtrace_facility_str = 0;
  static int _dbg_log_assign = 0;
-@@ -93,6 +95,8 @@ static param_export_t params[]={
+@@ -93,6 +96,9 @@ static param_export_t params[]={
  	{"mod_level",         STR_PARAM|USE_FUNC_PARAM, (void*)dbg_mod_level_param},
  	{"reset_msgid",       INT_PARAM, &_dbg_reset_msgid},
  	{"cfgpkgcheck",       INT_PARAM, &_dbg_cfgpkgcheck},
 +	{"cfgtest",           INT_PARAM, &_dbg_cfgtest},
-+	{"cfgt_avp",          STR_PARAM, &_dbg_cfgt_avp_param.s},
++	{"cfgt_avp",          STR_PARAM, &_dbg_cfgt_avp_param},
++	{"cfgt_basedir",      STR_PARAM, &_dbg_cfgt_basedir},
  	{0, 0, 0}
  };
  
-@@ -168,6 +172,19 @@ static int mod_init(void)
+@@ -168,6 +174,19 @@ static int mod_init(void)
  			return -1;
  		}
  	}
