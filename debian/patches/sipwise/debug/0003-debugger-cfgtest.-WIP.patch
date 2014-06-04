@@ -1,14 +1,14 @@
-From 4eeadf88c673ecc5631fe03fb99856ddda075547 Mon Sep 17 00:00:00 2001
+From f1ba460b6cd0f67d285ceb4d8a53af66ef51ffaf Mon Sep 17 00:00:00 2001
 From: Victor Seva <linuxmaniac@torreviejawireless.org>
 Date: Sat, 24 May 2014 23:54:50 +0200
 Subject: [PATCH] debugger: cfgtest. WIP.
 
 ---
  modules/debugger/Makefile       |   1 +
- modules/debugger/debugger_api.c | 698 +++++++++++++++++++++++++++++++++++++++-
+ modules/debugger/debugger_api.c | 721 +++++++++++++++++++++++++++++++++++++++-
  modules/debugger/debugger_api.h |   3 +
  modules/debugger/debugger_mod.c |  17 +
- 4 files changed, 711 insertions(+), 8 deletions(-)
+ 4 files changed, 734 insertions(+), 8 deletions(-)
 
 diff --git a/modules/debugger/Makefile b/modules/debugger/Makefile
 index a87111c..f76f588 100644
@@ -21,7 +21,7 @@ index a87111c..f76f588 100644
 +SER_LIBS+=$(SERLIBPATH)/kcore/kcore
  include ../../Makefile.modules
 diff --git a/modules/debugger/debugger_api.c b/modules/debugger/debugger_api.c
-index 9655491..04a2cc8 100644
+index 9655491..bc6b975 100644
 --- a/modules/debugger/debugger_api.c
 +++ b/modules/debugger/debugger_api.c
 @@ -41,6 +41,7 @@
@@ -58,7 +58,7 @@ index 9655491..04a2cc8 100644
  
  	return &_dbg_state_list[0];
  }
-@@ -195,6 +201,48 @@ int _dbg_step_loops = 200;
+@@ -195,6 +201,49 @@ int _dbg_step_loops = 200;
  int _dbg_reset_msgid = 0;
  
  /**
@@ -72,6 +72,7 @@ index 9655491..04a2cc8 100644
 +{
 +	gen_lock_t lock;
 +	struct str_hash_table hash;
++	str save_uuid; /* uuid to be save */
 +} dbg_cfgt_hash_t, *dbg_cfgt_hash_p;
 +
 +typedef struct _dbg_cfgt_node
@@ -107,11 +108,10 @@ index 9655491..04a2cc8 100644
   *
   */
  typedef struct _dbg_cmd
-@@ -217,6 +265,9 @@ typedef struct _dbg_pid
+@@ -217,6 +266,8 @@ typedef struct _dbg_pid
  	gen_lock_t *lock;
  	unsigned int reset_msgid; /* flag to reset the id */
  	unsigned int msgid_base; /* real id since the reset */
-+	str cfgt_save_uuid; /* uuid to be save */
 +	unsigned int cfgt_save; /* flag to reset the id (1 == ALL, 2 == uuid ) */
 +	dbg_cfgt_node_p cfgt_node;
  } dbg_pid_t;
@@ -188,7 +188,7 @@ index 9655491..04a2cc8 100644
  	{
  		LM_DBG("[%d] create locks\n", process_no);
  		_dbg_pid_list[process_no].lock = lock_alloc();
-@@ -999,12 +1098,63 @@ static void dbg_rpc_reset_msgid(rpc_t* rpc, void* ctx){
+@@ -999,12 +1098,78 @@ static void dbg_rpc_reset_msgid(rpc_t* rpc, void* ctx){
  /**
   *
   */
@@ -210,8 +210,30 @@ index 9655491..04a2cc8 100644
 +		rpc->fault(ctx, 500, "_dbg_pid_list is NULL");
 +		return;
 +	}
-+	rpc->scan(ctx, "*s", &uuid);
++	if(rpc->scan(ctx, "*S", &uuid)!=1)
++	{
++		uuid.len = 0;
++	}
 +	LM_DBG("set cfgt_save[%.*s]\n", uuid.len, uuid.s);
++	lock_get(&_dbg_cfgt_uuid->lock);
++	if(_dbg_cfgt_uuid->save_uuid.s)
++	{
++		LM_DBG("free previous uuid\n");
++		shm_free(_dbg_cfgt_uuid->save_uuid.s);
++		_dbg_cfgt_uuid->save_uuid.s = NULL;
++		_dbg_cfgt_uuid->save_uuid.len = 0;
++	}
++	if(uuid.len>0)
++	{
++		if(shm_str_dup(&_dbg_cfgt_uuid->save_uuid, &uuid) != 0)
++		{
++			LM_ERR("No shared memory left\n");
++			rpc->fault(ctx, 500, "No more shared memory left");
++			lock_release(&_dbg_cfgt_uuid->lock);
++			return;
++		}
++	}
++	lock_release(&_dbg_cfgt_uuid->lock);
 +	for(i=0; i<_dbg_pid_no; i++)
 +	{
 +		if (_dbg_pid_list[i].lock!=NULL)
@@ -219,14 +241,6 @@ index 9655491..04a2cc8 100644
 +			lock_get(_dbg_pid_list[i].lock);
 +			if(uuid.len>0)
 +			{
-+				if(shm_str_dup(&_dbg_pid_list[i].cfgt_save_uuid, &uuid) != 0)
-+				{
-+					LM_ERR("No shared memory left\n");
-+					rpc->fault(ctx, 500, "No more shared memory left");
-+					_dbg_pid_list[i].cfgt_save = 1;
-+					lock_release(_dbg_pid_list[i].lock);
-+					return;
-+				}
 +				_dbg_pid_list[i].cfgt_save = 2;
 +			}
 +			else
@@ -236,6 +250,7 @@ index 9655491..04a2cc8 100644
 +			lock_release(_dbg_pid_list[i].lock);
 +		}
 +	}
++
 +	rpc->add(ctx, "s", "200 ok");
 +}
 +
@@ -252,7 +267,7 @@ index 9655491..04a2cc8 100644
  	{0, 0, 0, 0}
  };
  
-@@ -1622,7 +1772,8 @@ int _dbg_get_obj_xavp_vals(struct sip_msg *msg,
+@@ -1622,7 +1787,8 @@ int _dbg_get_obj_xavp_vals(struct sip_msg *msg,
  	return 0;
  }
  
@@ -262,7 +277,7 @@ index 9655491..04a2cc8 100644
  {
  	int i;
  	pv_value_t value;
-@@ -1637,8 +1788,8 @@ int _dbg_get_json(struct sip_msg* msg, unsigned int mask, srjson_doc_t *jdoc)
+@@ -1637,8 +1803,8 @@ int _dbg_get_json(struct sip_msg* msg, unsigned int mask, srjson_doc_t *jdoc)
  		LM_ERR("cannot access pv_cache\n");
  		return -1;
  	}
@@ -273,7 +288,7 @@ index 9655491..04a2cc8 100644
  		return -1;
  	}
  
-@@ -1748,7 +1899,7 @@ int _dbg_get_json(struct sip_msg* msg, unsigned int mask, srjson_doc_t *jdoc)
+@@ -1748,7 +1914,7 @@ int _dbg_get_json(struct sip_msg* msg, unsigned int mask, srjson_doc_t *jdoc)
  			}
  			if(jobj!=NULL)
  			{
@@ -282,7 +297,7 @@ index 9655491..04a2cc8 100644
  			}
  			el = el->next;
  		}
-@@ -1756,7 +1907,7 @@ int _dbg_get_json(struct sip_msg* msg, unsigned int mask, srjson_doc_t *jdoc)
+@@ -1756,7 +1922,7 @@ int _dbg_get_json(struct sip_msg* msg, unsigned int mask, srjson_doc_t *jdoc)
  	return 0;
  
  error:
@@ -291,7 +306,7 @@ index 9655491..04a2cc8 100644
  	return -1;
  }
  
-@@ -1776,7 +1927,7 @@ int dbg_dump_json(struct sip_msg* msg, unsigned int mask, int level)
+@@ -1776,7 +1942,7 @@ int dbg_dump_json(struct sip_msg* msg, unsigned int mask, int level)
  		}
  	}
  
@@ -300,7 +315,7 @@ index 9655491..04a2cc8 100644
  	output = srjson_PrintUnformatted(&jdoc, jdoc.root);
  	if(output==NULL)
  	{
-@@ -1791,4 +1942,535 @@ int dbg_dump_json(struct sip_msg* msg, unsigned int mask, int level)
+@@ -1791,4 +1957,543 @@ int dbg_dump_json(struct sip_msg* msg, unsigned int mask, int level)
  error:
  	srjson_DestroyDoc(&jdoc);
  	return -1;
@@ -349,11 +364,19 @@ index 9655491..04a2cc8 100644
 +	{
 +		LM_DBG("cfgt_save!\n");
 +		save = _dbg_pid_list[process_no].cfgt_save;
-+		str_copy(&uuid, &_dbg_pid_list[process_no].cfgt_save_uuid);
 +		_dbg_pid_list[process_no].cfgt_save = 0;
 +	}
 +	lock_release(_dbg_pid_list[process_no].lock);
 +
++	if(save==2)
++	{
++		lock_get(&_dbg_cfgt_uuid->lock);
++		if(_dbg_cfgt_uuid->save_uuid.s)
++		{
++			pkg_str_dup(&uuid, &_dbg_cfgt_uuid->save_uuid);
++		}
++		lock_release(&_dbg_cfgt_uuid->lock);
++	}
 +	if(save!=0)
 +	{
 +		if (uuid.len>0) LM_DBG("saving [%.*s]\n", uuid.len, uuid.s);
