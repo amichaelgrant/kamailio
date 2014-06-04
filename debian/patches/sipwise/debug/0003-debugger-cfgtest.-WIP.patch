@@ -1,4 +1,4 @@
-From eba4d964ae74bc11b79ae54ae790e9c67756be8b Mon Sep 17 00:00:00 2001
+From a66c3a7a00ae889cfc9b1e803184ace5abd4430d Mon Sep 17 00:00:00 2001
 From: Victor Seva <linuxmaniac@torreviejawireless.org>
 Date: Sat, 24 May 2014 23:54:50 +0200
 Subject: [PATCH] debugger: cfgtest. WIP.
@@ -7,8 +7,8 @@ Subject: [PATCH] debugger: cfgtest. WIP.
  modules/debugger/Makefile       |   1 +
  modules/debugger/debugger_api.c | 723 +++++++++++++++++++++++++++++++++++++++-
  modules/debugger/debugger_api.h |   3 +
- modules/debugger/debugger_mod.c |  19 ++
- 4 files changed, 738 insertions(+), 8 deletions(-)
+ modules/debugger/debugger_mod.c |  25 ++
+ 4 files changed, 744 insertions(+), 8 deletions(-)
 
 diff --git a/modules/debugger/Makefile b/modules/debugger/Makefile
 index a87111c..f76f588 100644
@@ -877,7 +877,7 @@ index 011013a..856931a 100644
  #endif
  
 diff --git a/modules/debugger/debugger_mod.c b/modules/debugger/debugger_mod.c
-index 8434dde..0aeb3f0 100644
+index 8434dde..9d276c6 100644
 --- a/modules/debugger/debugger_mod.c
 +++ b/modules/debugger/debugger_mod.c
 @@ -62,6 +62,10 @@ extern char *_dbg_cfgtrace_lname;
@@ -896,13 +896,13 @@ index 8434dde..0aeb3f0 100644
  	{"reset_msgid",       INT_PARAM, &_dbg_reset_msgid},
  	{"cfgpkgcheck",       INT_PARAM, &_dbg_cfgpkgcheck},
 +	{"cfgtest",           INT_PARAM, &_dbg_cfgtest},
-+	{"cfgt_avp_route",    STR_PARAM, &_dbg_cfgt_avp_route},
-+	{"cfgt_hdr_name",     STR_PARAM, &_dbg_cfgt_hdr_name},
-+	{"cfgt_basedir",      STR_PARAM, &_dbg_cfgt_basedir},
++	{"cfgt_avp_route",    STR_PARAM, &_dbg_cfgt_avp_route.s},
++	{"cfgt_hdr_name",     STR_PARAM, &_dbg_cfgt_hdr_name.s},
++	{"cfgt_basedir",      STR_PARAM, &_dbg_cfgt_basedir.s},
  	{0, 0, 0}
  };
  
-@@ -168,6 +176,17 @@ static int mod_init(void)
+@@ -168,6 +176,23 @@ static int mod_init(void)
  			return -1;
  		}
  	}
@@ -915,6 +915,12 @@ index 8434dde..0aeb3f0 100644
 +			LM_ERR("could not insert callback");
 +			return -1;
 +		}
++		if (_dbg_cfgt_avp_route.s)
++			_dbg_cfgt_avp_route.len = strlen(_dbg_cfgt_avp_route.s);
++		if (_dbg_cfgt_hdr_name.s)
++			_dbg_cfgt_hdr_name.len = strlen(_dbg_cfgt_hdr_name.s);
++		if (_dbg_cfgt_basedir.s)
++			_dbg_cfgt_basedir.len = strlen(_dbg_cfgt_basedir.s);
 +		dbg_init_cfgtest();
 +	}
  	return dbg_init_bp_list();
