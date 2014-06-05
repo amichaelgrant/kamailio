@@ -1,4 +1,4 @@
-From c2241d07e1ba4c99681bcd42604e837ed087b644 Mon Sep 17 00:00:00 2001
+From baf765155823cfd642c205e24ecb3c3105861b22 Mon Sep 17 00:00:00 2001
 From: Victor Seva <linuxmaniac@torreviejawireless.org>
 Date: Sat, 24 May 2014 23:54:50 +0200
 Subject: [PATCH] debugger: cfgtest. WIP.
@@ -21,7 +21,7 @@ index a87111c..f76f588 100644
 +SER_LIBS+=$(SERLIBPATH)/kcore/kcore
  include ../../Makefile.modules
 diff --git a/modules/debugger/debugger_api.c b/modules/debugger/debugger_api.c
-index 9655491..269264d 100644
+index 9655491..82681c4 100644
 --- a/modules/debugger/debugger_api.c
 +++ b/modules/debugger/debugger_api.c
 @@ -41,6 +41,7 @@
@@ -615,14 +615,14 @@ index 9655491..269264d 100644
 +		LM_ERR("cannot create json object\n");
 +		goto error;
 +	}
-+	srjson_AddItemToObject(&node->jdoc, node->jdoc.root, "in\0", node->in);
++	srjson_AddItemToObject(&node->jdoc, node->jdoc.root, "sip_in\0", node->in);
 +	node->out = srjson_CreateArray(&node->jdoc);
 +	if(node->out==NULL)
 +	{
 +		LM_ERR("cannot create json object\n");
 +		goto error;
 +	}
-+	srjson_AddItemToObject(&node->jdoc, node->jdoc.root, "out\0", node->out);
++	srjson_AddItemToObject(&node->jdoc, node->jdoc.root, "sip_out\0", node->out);
 +	LM_DBG("node created\n");
 +	if(_dbg_cfgt_head)
 +	{
