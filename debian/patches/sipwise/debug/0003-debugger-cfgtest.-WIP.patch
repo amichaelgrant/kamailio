@@ -1,4 +1,4 @@
-From baf765155823cfd642c205e24ecb3c3105861b22 Mon Sep 17 00:00:00 2001
+From 45467f96e40af1ae5b62cff9c0ea09f4660bf696 Mon Sep 17 00:00:00 2001
 From: Victor Seva <linuxmaniac@torreviejawireless.org>
 Date: Sat, 24 May 2014 23:54:50 +0200
 Subject: [PATCH] debugger: cfgtest. WIP.
@@ -21,7 +21,7 @@ index a87111c..f76f588 100644
 +SER_LIBS+=$(SERLIBPATH)/kcore/kcore
  include ../../Makefile.modules
 diff --git a/modules/debugger/debugger_api.c b/modules/debugger/debugger_api.c
-index 9655491..82681c4 100644
+index 9655491..282a92e 100644
 --- a/modules/debugger/debugger_api.c
 +++ b/modules/debugger/debugger_api.c
 @@ -41,6 +41,7 @@
@@ -149,8 +149,8 @@ index 9655491..82681c4 100644
 +				}
 +				else if(!STR_EQ(route, node->route))
 +				{
-+					LM_DBG("Change to route[%.*s]. dump vars\n",
-+						route.len, route.s);
++					LM_DBG("Change from route to route[%.*s]. dump vars\n",
++						node->route.len, node->route.s, route.len, route.s);
 +					if(node->route.s)
 +					{
 +						pkg_free(node->route.s);
