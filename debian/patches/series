@@ -15,6 +15,7 @@ upstream/0005-textops-Refresh-README.patch
 sipwise/debug/0001-debugger-create-_dbg_get_json-function.patch
 sipwise/debug/0002-core-add-string-helper-functions.patch
 sipwise/debug/0003-debugger-cfgtest.-WIP.patch
+sipwise/debug/0001-test_routename_from_core.patch
 # fixes from 4.1 branch
 upstream/0001-pipelimit-run-timer-at-1000ms.patch
 upstream/0002-drouting-removed-old-contraint-on-route-index.patch
