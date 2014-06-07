@@ -1,37 +1,38 @@
-From 45a39ad70a79004f0f5a758016d74da88d846ffa Mon Sep 17 00:00:00 2001
+From d86decadafdbf7351be2159c825ce307245aaab8 Mon Sep 17 00:00:00 2001
 From: Victor Seva <linuxmaniac@torreviejawireless.org>
 Date: Sat, 7 Jun 2014 14:39:39 +0200
 Subject: [PATCH] test_routename_from_core
 
 ---
- modules/debugger/debugger_api.c | 44 ++++++++++++++++++++++-------------------
- 1 file changed, 24 insertions(+), 20 deletions(-)
+ modules/debugger/debugger_api.c | 46 ++++++++++++++++++++++-------------------
+ 1 file changed, 25 insertions(+), 21 deletions(-)
 
 diff --git a/modules/debugger/debugger_api.c b/modules/debugger/debugger_api.c
-index 28d3a0c..060daa1 100644
+index 28d3a0c..2d9a1ea 100644
 --- a/modules/debugger/debugger_api.c
 +++ b/modules/debugger/debugger_api.c
 @@ -397,31 +397,35 @@ int dbg_cfg_trace(void *data)
  			{
  				LM_ERR("Cannot get route name by avp[%.*s]\n",
  					_dbg_cfgt_avp_route.len, _dbg_cfgt_avp_route.s);
++				route.s = a->rname;
++				route.len = strlen(a->rname);
++				LM_DBG("route from action:[%s]\n", a->rname);
 +
-+			}
+ 			}
+-			else
 +			else if(STR_EQ(route, route_null)){
 +				LM_ERR("Cannot get route name by avp[%.*s]\n",
 +				_dbg_cfgt_avp_route.len, _dbg_cfgt_avp_route.s);
- 			}
- 			else
- 			{
--				if(STR_EQ(route, route_null)){
--					LM_ERR("Cannot get route name by avp[%.*s]\n",
--					_dbg_cfgt_avp_route.len, _dbg_cfgt_avp_route.s);
 +				route.s = a->rname;
 +				route.len = strlen(a->rname);
 +				LM_DBG("route from action:[%s]\n", a->rname);
 +			}
 +			if(!STR_EQ(route, node->route))
-+			{
+ 			{
+-				if(STR_EQ(route, route_null)){
+-					LM_ERR("Cannot get route name by avp[%.*s]\n",
+-					_dbg_cfgt_avp_route.len, _dbg_cfgt_avp_route.s);
 +				LM_DBG("Change from[%.*s] route to route[%.*s]. dump vars\n",
 +					node->route.len, node->route.s, route.len, route.s);
 +				if(node->route.s)
