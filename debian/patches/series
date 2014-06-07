@@ -12,6 +12,7 @@ upstream/0005-textops-Refresh-README.patch
 ## debugger cfgtest
 # this is needed
 #upstream/0001-core-add-str_append-helper-function.patch
+sipwise/debug/0003-core-add-route-name-to-action-struct.patch
 sipwise/debug/0001-debugger-create-_dbg_get_json-function.patch
 sipwise/debug/0002-core-add-string-helper-functions.patch
 sipwise/debug/0003-debugger-cfgtest.-WIP.patch
