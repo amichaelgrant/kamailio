@@ -1,14 +1,14 @@
-From 5d1fd3e0cb424a80c94ce8bb555ace93173914f4 Mon Sep 17 00:00:00 2001
+From 7f7e7e14f9a535c272aeba165c7ff4a63420e0e1 Mon Sep 17 00:00:00 2001
 From: Victor Seva <linuxmaniac@torreviejawireless.org>
 Date: Sat, 24 May 2014 23:54:50 +0200
 Subject: [PATCH] debugger: cfgtest detect change of route.
 
 ---
  modules/debugger/Makefile       |   1 +
- modules/debugger/debugger_api.c | 885 +++++++++++++++++++++++++++++++++++++++-
+ modules/debugger/debugger_api.c | 896 +++++++++++++++++++++++++++++++++++++++-
  modules/debugger/debugger_api.h |   3 +
  modules/debugger/debugger_mod.c |  21 +
- 4 files changed, 902 insertions(+), 8 deletions(-)
+ 4 files changed, 913 insertions(+), 8 deletions(-)
 
 diff --git a/modules/debugger/Makefile b/modules/debugger/Makefile
 index a87111c..f76f588 100644
@@ -21,7 +21,7 @@ index a87111c..f76f588 100644
 +SER_LIBS+=$(SERLIBPATH)/kcore/kcore
  include ../../Makefile.modules
 diff --git a/modules/debugger/debugger_api.c b/modules/debugger/debugger_api.c
-index 2c2cbaf..d8b97a7 100644
+index 2c2cbaf..5be4bf2 100644
 --- a/modules/debugger/debugger_api.c
 +++ b/modules/debugger/debugger_api.c
 @@ -41,6 +41,7 @@
@@ -302,7 +302,7 @@ index 2c2cbaf..d8b97a7 100644
  	output = srjson_PrintUnformatted(&jdoc, jdoc.root);
  	if(output==NULL)
  	{
-@@ -1819,4 +1972,720 @@ int dbg_dump_json(struct sip_msg* msg, unsigned int mask, int level)
+@@ -1819,4 +1972,731 @@ int dbg_dump_json(struct sip_msg* msg, unsigned int mask, int level)
  error:
  	srjson_DestroyDoc(&jdoc);
  	return -1;
@@ -724,6 +724,16 @@ index 2c2cbaf..d8b97a7 100644
 +	srjson_DestroyDoc(&node->jdoc);
 +	if(node->uuid.s) pkg_free(node->uuid.s);
 +	clist_rm(node, next, prev);
++	while(node->route)
++	{
++		if(node->route->prev)
++		{
++			pkg_free(node->route->prev);
++			node->route->prev = NULL;
++		}
++		if(node->route->next) node->route = node->route->next;
++		else { pkg_free(node->route); node->route = NULL; }
++	}
 +	if(_dbg_pid_list[process_no].cfgt_node == node)
 +	{
 +		LM_DBG("cfgt_node deleted\n");
@@ -1015,6 +1025,7 @@ index 2c2cbaf..d8b97a7 100644
 +		}
 +	}
 +	else LM_DBG("flow:empty\n");
++	return;
 +	buf = srjson_PrintUnformatted(&node->jdoc, node->jdoc.root);
 +	if(buf==NULL)
 +	{
