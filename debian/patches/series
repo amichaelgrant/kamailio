@@ -14,7 +14,7 @@ upstream/0005-textops-Refresh-README.patch
 #upstream/0001-core-add-str_append-helper-function.patch
 sipwise/debug/0003-core-add-route-name-to-action-struct.patch
 sipwise/debug/0001-debugger-create-_dbg_get_json-function.patch
-sipwise/0001-debugger-cfgtest-detect-change-of-route.patch
+sipwise/debug/0001-debugger-cfgtest-detect-change-of-route.patch
 # fixes from 4.1 branch
 upstream/0001-pipelimit-run-timer-at-1000ms.patch
 upstream/0002-drouting-removed-old-contraint-on-route-index.patch
