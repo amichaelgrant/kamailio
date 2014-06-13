@@ -42,15 +42,13 @@ Subject: [PATCH] debugger: show routename in cfgtrace output
  /**
   * callback executed for each cfg action
   */
-@@ -322,10 +348,12 @@
- 	{
+@@ -323,9 +349,11 @@
  		if(is_printable(_dbg_cfgtrace_level))
  		{
--			LOG_(_dbg_cfgtrace_facility, _dbg_cfgtrace_level,
+ 			LOG_(_dbg_cfgtrace_facility, _dbg_cfgtrace_level,
 -					_dbg_cfgtrace_prefix,
 -					" c=[%s] l=%d a=%d n=%.*s\n",
 -					ZSW(a->cfile), a->cline, a->type, an->len, ZSW(an->s)
-+			LOG__(_dbg_cfgtrace_facility, _dbg_cfgtrace_level,
 +					_dbg_cfgtrace_lname, _dbg_cfgtrace_prefix,
 +					"%s=[%s] c=[%s] l=%d a=%d n=%.*s\n",
 +					get_current_route_type_name(), ZSW(a->rname),
