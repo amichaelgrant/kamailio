@@ -1,14 +1,14 @@
-From 19420edd0d64e6dbfb87b774aa950fd48907e907 Mon Sep 17 00:00:00 2001
+From 5d1fd3e0cb424a80c94ce8bb555ace93173914f4 Mon Sep 17 00:00:00 2001
 From: Victor Seva <linuxmaniac@torreviejawireless.org>
 Date: Sat, 24 May 2014 23:54:50 +0200
 Subject: [PATCH] debugger: cfgtest detect change of route.
 
 ---
  modules/debugger/Makefile       |   1 +
- modules/debugger/debugger_api.c | 884 +++++++++++++++++++++++++++++++++++++++-
+ modules/debugger/debugger_api.c | 885 +++++++++++++++++++++++++++++++++++++++-
  modules/debugger/debugger_api.h |   3 +
  modules/debugger/debugger_mod.c |  21 +
- 4 files changed, 902 insertions(+), 7 deletions(-)
+ 4 files changed, 902 insertions(+), 8 deletions(-)
 
 diff --git a/modules/debugger/Makefile b/modules/debugger/Makefile
 index a87111c..f76f588 100644
@@ -21,7 +21,7 @@ index a87111c..f76f588 100644
 +SER_LIBS+=$(SERLIBPATH)/kcore/kcore
  include ../../Makefile.modules
 diff --git a/modules/debugger/debugger_api.c b/modules/debugger/debugger_api.c
-index 0e9c6fb..59e8b33 100644
+index 2c2cbaf..d8b97a7 100644
 --- a/modules/debugger/debugger_api.c
 +++ b/modules/debugger/debugger_api.c
 @@ -41,6 +41,7 @@
@@ -302,11 +302,13 @@ index 0e9c6fb..59e8b33 100644
  	output = srjson_PrintUnformatted(&jdoc, jdoc.root);
  	if(output==NULL)
  	{
-@@ -1820,3 +1973,720 @@ error:
+@@ -1819,4 +1972,720 @@ int dbg_dump_json(struct sip_msg* msg, unsigned int mask, int level)
+ error:
  	srjson_DestroyDoc(&jdoc);
  	return -1;
- }
-+
+-}
+\ No newline at end of file
++}
 +
 +/*
 +TODO:

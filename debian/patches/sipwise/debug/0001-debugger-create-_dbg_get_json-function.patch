@@ -1,4 +1,4 @@
-From 47a4fccfaca2fc285c054c8687791c1b5aad21d6 Mon Sep 17 00:00:00 2001
+From e64011e54fc229f0129ea0a7c307cb23c41ebfba Mon Sep 17 00:00:00 2001
 From: Victor Seva <linuxmaniac@torreviejawireless.org>
 Date: Fri, 23 May 2014 19:30:35 +0200
 Subject: [PATCH] debugger: create _dbg_get_json function
@@ -8,10 +8,10 @@ Subject: [PATCH] debugger: create _dbg_get_json function
  1 file changed, 43 insertions(+), 28 deletions(-)
 
 diff --git a/modules/debugger/debugger_api.c b/modules/debugger/debugger_api.c
-index c611fa1..9655491 100644
+index e3b53db..2c2cbaf 100644
 --- a/modules/debugger/debugger_api.c
 +++ b/modules/debugger/debugger_api.c
-@@ -1622,36 +1622,27 @@ int _dbg_get_obj_xavp_vals(struct sip_msg *msg,
+@@ -1650,36 +1650,27 @@ int _dbg_get_obj_xavp_vals(struct sip_msg *msg,
  	return 0;
  }
  
@@ -53,7 +53,7 @@ index c611fa1..9655491 100644
  	for(i=0;i<PV_CACHE_SIZE;i++)
  	{
  		el = _pv_cache[i];
-@@ -1684,13 +1675,13 @@ int dbg_dump_json(struct sip_msg* msg, unsigned int mask, int level)
+@@ -1712,13 +1703,13 @@ int dbg_dump_json(struct sip_msg* msg, unsigned int mask, int level)
  				}
  				else
  				{
@@ -69,7 +69,7 @@ index c611fa1..9655491 100644
  					{
  						el = el->next;
  						continue;
-@@ -1705,13 +1696,13 @@ int dbg_dump_json(struct sip_msg* msg, unsigned int mask, int level)
+@@ -1733,13 +1724,13 @@ int dbg_dump_json(struct sip_msg* msg, unsigned int mask, int level)
  					el = el->next;
  					continue;
  				}
@@ -85,7 +85,7 @@ index c611fa1..9655491 100644
  				{
  					el = el->next;
  					continue;
-@@ -1730,7 +1721,7 @@ int dbg_dump_json(struct sip_msg* msg, unsigned int mask, int level)
+@@ -1758,7 +1749,7 @@ int dbg_dump_json(struct sip_msg* msg, unsigned int mask, int level)
  				{
  					if(mask&DBG_DP_NULL)
  					{
@@ -94,7 +94,7 @@ index c611fa1..9655491 100644
  					}
  					else
  					{
-@@ -1738,9 +1729,9 @@ int dbg_dump_json(struct sip_msg* msg, unsigned int mask, int level)
+@@ -1766,9 +1757,9 @@ int dbg_dump_json(struct sip_msg* msg, unsigned int mask, int level)
  						continue;
  					}
  				}else if(value.flags&(PV_VAL_INT)){
@@ -106,7 +106,7 @@ index c611fa1..9655491 100644
  				}else {
  					LM_WARN("el->pvname[%.*s] value[%d] unhandled\n", el->pvname.len, el->pvname.s,
  						value.flags);
-@@ -1757,23 +1748,47 @@ int dbg_dump_json(struct sip_msg* msg, unsigned int mask, int level)
+@@ -1785,23 +1776,47 @@ int dbg_dump_json(struct sip_msg* msg, unsigned int mask, int level)
  			}
  			if(jobj!=NULL)
  			{
@@ -163,5 +163,5 @@ index c611fa1..9655491 100644
 +}
 \ No newline at end of file
 -- 
-2.0.0.rc2
+2.0.0
 
