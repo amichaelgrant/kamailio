@@ -415,7 +415,7 @@ Subject: [PATCH] dialplan: use AVP[*] values at match expresion one by one.
  				LM_DBG("regex operator testing\n");
 -				if(rulep->pv_flags&DP_PV_MATCH) {
 +				LM_DBG("match:[%.*s] rulep->pv_flags:%d\n",
-+					rule->match_exp.len, rule->match_exp.s , rulep->pv_flags);
++					rulep->match_exp.len, rulep->match_exp.s , rulep->pv_flags);
 +				if(rulep->pv_flags&DP_PV_MATCH||rulep->pv_flags&DP_PV_MATCH_AVP)
 +				{
  					if(!msg) {
