@@ -1,4 +1,4 @@
-From c7a9d7f06da8aacff62764f8ac18c0eec21831af Mon Sep 17 00:00:00 2001
+From b583b91743630e5e0e628b1abcf6aca0b785350b Mon Sep 17 00:00:00 2001
 From: Victor Seva <linuxmaniac@torreviejawireless.org>
 Date: Sat, 28 Jun 2014 12:37:10 +0200
 Subject: [PATCH] dialplan: use AVP[*] values at match expresion one by one.
@@ -6,8 +6,8 @@ Subject: [PATCH] dialplan: use AVP[*] values at match expresion one by one.
 ---
  modules/dialplan/dialplan.h |  25 +++-
  modules/dialplan/dp_db.c    | 160 ++++++++++++++++-----
- modules/dialplan/dp_repl.c  | 334 +++++++++++++++++++++++++++++++++++++-------
- 3 files changed, 423 insertions(+), 96 deletions(-)
+ modules/dialplan/dp_repl.c  | 335 +++++++++++++++++++++++++++++++++++++-------
+ 3 files changed, 424 insertions(+), 96 deletions(-)
 
 diff --git a/modules/dialplan/dialplan.h b/modules/dialplan/dialplan.h
 index b506853..9e14b44 100644
@@ -280,7 +280,7 @@ index 95ec45e..4f0abc8 100644
  	LM_DBG("--pv_flags:%d\n", flag);
  }
 diff --git a/modules/dialplan/dp_repl.c b/modules/dialplan/dp_repl.c
-index 2a53be4..2938cf2 100644
+index 2a53be4..b7ba49c 100644
 --- a/modules/dialplan/dp_repl.c
 +++ b/modules/dialplan/dp_repl.c
 @@ -127,7 +127,8 @@ error:
@@ -628,7 +628,7 @@ index 2a53be4..2938cf2 100644
  					if(!msg) {
  						LM_ERR("Cannot translate using a regex match with pv "
  							"without message\n");
-@@ -498,20 +694,36 @@ search_rule:
+@@ -498,20 +694,37 @@ search_rule:
  							LM_ERR("error rule regex comp. Skip this\n");
  							continue;
  						}
@@ -657,6 +657,7 @@ index 2a53be4..2938cf2 100644
 -				rez = pcre_exec(match_comp, NULL, input.s, input.len,
 +				else
 +				{
++					match_expr = &(rulep->match_exp);
 +					rez = pcre_exec(rulep->match_comp, NULL, input.s, input.len,
  						0, 0, NULL, 0);
 +				}
@@ -668,7 +669,7 @@ index 2a53be4..2938cf2 100644
  				if(rulep->match_exp.len != input.len) {
  					rez = -1;
  				} else {
-@@ -522,6 +734,7 @@ search_rule:
+@@ -522,6 +735,7 @@ search_rule:
  
  			case DP_FNMATCH_OP:
  				LM_DBG("fnmatch operator testing\n");
@@ -676,7 +677,7 @@ index 2a53be4..2938cf2 100644
  				b = input.s[input.len];
  				input.s[input.len] = '\0';
  				rez = fnmatch(rulep->match_exp.s, input.s, 0);
-@@ -550,7 +763,7 @@ search_rule:
+@@ -550,7 +764,7 @@ search_rule:
  
  repl:
  	LM_DBG("found a matching rule %p: pr %i, match_exp %.*s pv_flags:%d\n",
@@ -685,7 +686,7 @@ index 2a53be4..2938cf2 100644
  			rulep->pv_flags);
  
  	if(attrs) {
-@@ -576,10 +789,25 @@ repl:
+@@ -576,10 +790,25 @@ repl:
  	if(!(rulep->pv_flags&DP_PV_MASK))
  		rule_pv = NULL;
  
