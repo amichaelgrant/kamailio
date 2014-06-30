@@ -145,7 +145,7 @@ Subject: [PATCH] dialplan: use AVP[*] values at match expresion one by one.
  	}
  	if(rule->subst_comp){
  		pcre_free(rule->subst_comp);
-@@ -1028,10 +1077,15 @@
+@@ -1028,10 +1077,22 @@
  
  void list_pv_rule(dpl_pv_node_t * rule)
  {
@@ -153,11 +153,18 @@ Subject: [PATCH] dialplan: use AVP[*] values at match expresion one by one.
 -			"subst_exp %.*s \n", rule, rule->next,
 -			rule->match_exp.len, rule->match_exp.s,
 -			rule->subst_exp.len, rule->subst_exp.s);
-+	int num = 0;
-+	dpl_pv_match_node_p n = rule->match_comp;
-+	LM_DBG("PV_RULE %p: next %p subst_exp %.*s \n",
-+			rule, rule->next, rule->subst_exp.len, rule->subst_exp.s);
-+	while(n)
++	pv_elem_p e;
++	int num;
++	dpl_pv_match_node_p n;
++	LM_DBG("PV_RULE[%p]: next[%p] subst_exp[%.*s] match_elem[%p]\n",
++			rule, rule->next, rule->subst_exp.len, rule->subst_exp.s,
++			rule->match_elem);
++	for(e=rule->match_elem, num=0; e!=NULL; e=e->next, num++)
++	{
++		LM_DBG("match_elem[%d][%p][%.*s][%p]\n", num, e, e->text.len,
++			e->text.s, e->spec);
++	}
++	for(n=rule->match_comp, num=0;n!=NULL;n=n->next, num++)
 +	{
 +		LM_DBG("match[%d] expr:%.*s\n", num, n->expr.len, n->expr.s);
 +		num++;
@@ -165,7 +172,7 @@ Subject: [PATCH] dialplan: use AVP[*] values at match expresion one by one.
  }
  
  void show_pv_flags(unsigned int flag)
-@@ -1042,6 +1096,7 @@
+@@ -1042,6 +1103,7 @@
  	if(flag&DP_PV_SUBST) LM_DBG("DP_PV_SUBST\n");
  	if(flag&DP_PV_SUBST_M) LM_DBG("DP_PV_SUBST_M\n");
  	if(flag&DP_PV_SUBST_MASK) LM_DBG("DP_PV_SUBST_MASK\n");
