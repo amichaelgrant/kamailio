@@ -95,18 +95,18 @@ Subject: [PATCH] dialplan: use AVP[*] values at match expresion one by one.
 +		switch(set_pv_match_avp_flag(match_elem, &rule->pv_flags))
 +		{
 +			case 0:
-+				LM_DBG("DP_PV_MATCH_AVP detected\n"); break;
++				LM_DBG("DP_PV_MATCH_AVP detected\n");
++				break;
 +			case 1:
 +				break;
 +			default:
 +				LM_ERR("detecting AVP\n");
 +				goto err;
-+			break;
 +		}
  	}
  
  	if(rule->pv_flags&DP_PV_SUBST)
-@@ -439,7 +481,7 @@
+@@ -439,13 +481,14 @@
  			goto err;
  		}
  		memset(new_rule, 0, sizeof(dpl_pv_node_t));
@@ -115,7 +115,14 @@ Subject: [PATCH] dialplan: use AVP[*] values at match expresion one by one.
  			new_rule->match_elem = match_elem;
  		}
  		if(rule->pv_flags&DP_PV_SUBST) {
-@@ -883,13 +925,19 @@
+ 			new_rule->subst_elem = subst_elem;
+ 		}
+ 		new_rule->orig = rule;
++		list_pv_rule(new_rule);
+ 	}
+ 	return new_rule;
+ 
+@@ -883,13 +926,19 @@
  }
  
  void destroy_pv_rule(dpl_pv_node_t * rule){
@@ -138,7 +145,7 @@ Subject: [PATCH] dialplan: use AVP[*] values at match expresion one by one.
  	}
  	if(rule->subst_comp){
  		pcre_free(rule->subst_comp);
-@@ -1028,10 +1076,15 @@
+@@ -1028,10 +1077,15 @@
  
  void list_pv_rule(dpl_pv_node_t * rule)
  {
@@ -158,7 +165,7 @@ Subject: [PATCH] dialplan: use AVP[*] values at match expresion one by one.
  }
  
  void show_pv_flags(unsigned int flag)
-@@ -1042,6 +1095,7 @@
+@@ -1042,6 +1096,7 @@
  	if(flag&DP_PV_SUBST) LM_DBG("DP_PV_SUBST\n");
  	if(flag&DP_PV_SUBST_M) LM_DBG("DP_PV_SUBST_M\n");
  	if(flag&DP_PV_SUBST_MASK) LM_DBG("DP_PV_SUBST_MASK\n");
@@ -303,7 +310,7 @@ Subject: [PATCH] dialplan: use AVP[*] values at match expresion one by one.
 +	char *index;
 +
 +	if(rule->match_comp) free_pv_match_node(&rule->match_comp);
-+	LM_DBG("rule[%p]->match_elem\n", rule);
++	LM_DBG("rule[%p]->match_elem[%p]\n", rule, rule->match_elem);
 +	dlp_print_elem(rule->match_elem);
 +	if(rule->orig->pv_flags&DP_PV_MATCH)
 +	{
