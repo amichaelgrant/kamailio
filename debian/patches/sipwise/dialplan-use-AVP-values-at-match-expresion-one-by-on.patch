@@ -1,13 +1,13 @@
-From 5214102b56dd847481bbaa991f002b4af0f87eca Mon Sep 17 00:00:00 2001
+From 42970fd9af8009e5491fefb86e5a292d968563fd Mon Sep 17 00:00:00 2001
 From: Victor Seva <linuxmaniac@torreviejawireless.org>
 Date: Sat, 28 Jun 2014 12:37:10 +0200
 Subject: [PATCH] dialplan: use AVP[*] values at match expresion one by one.
 
 ---
  modules/dialplan/dialplan.h |  24 ++-
- modules/dialplan/dp_db.c    | 167 +++++++++++++++------
+ modules/dialplan/dp_db.c    | 174 ++++++++++++++++------
  modules/dialplan/dp_repl.c  | 350 +++++++++++++++++++++++++++++++++++++-------
- 3 files changed, 440 insertions(+), 101 deletions(-)
+ 3 files changed, 445 insertions(+), 103 deletions(-)
 
 diff --git a/modules/dialplan/dialplan.h b/modules/dialplan/dialplan.h
 index b506853..dcebdcf 100644
@@ -60,7 +60,7 @@ index b506853..dcebdcf 100644
 +	str *match_expr, str *);
  #endif
 diff --git a/modules/dialplan/dp_db.c b/modules/dialplan/dp_db.c
-index 95ec45e..4b96e43 100644
+index 95ec45e..f9a4292 100644
 --- a/modules/dialplan/dp_db.c
 +++ b/modules/dialplan/dp_db.c
 @@ -206,6 +206,7 @@ void destroy_pv_data(void)
@@ -224,7 +224,28 @@ index 95ec45e..4b96e43 100644
  {
  	dpl_pv_id_p crt_idp, last_idp;
  	dpl_pv_index_p indexp, last_indexp, new_indexp;
-@@ -883,17 +936,29 @@ void destroy_pv_hash(void)
+@@ -748,7 +801,7 @@ add_rule:
+ 		crt_idp->next = rules_pv_hash;
+ 		rules_pv_hash = crt_idp;
+ 	}
+-	/*list_pv_rule(rule);*/
++	list_pv_rule(rule);
+ 
+ 	return 0;
+ 
+@@ -816,7 +869,10 @@ int generate_pv_hash(void)
+ 		LM_DBG("DPID: %i, pointer %p\n", crt_idp->dp_id, crt_idp);
+ 		for(indexp=crt_idp->first_index; indexp!=NULL;indexp= indexp->next){
+ 			LM_DBG("INDEX LEN: %i\n", indexp->len);
+-			for(rulep = indexp->first_rule; rulep!= NULL;rulep = rulep->next){
++			for(rulep = indexp->first_rule; rulep!= NULL;rulep = rulep->next)
++			{
++				LM_DBG("rulep[%p]\n", rulep);
++				show_pv_flags(rulep->pv_flags);
+ 				if(rulep->pv_flags&DP_PV_MASK){
+ 					rule_pv = build_pv_rule(rulep);
+ 					if(rule_pv){
+@@ -883,17 +939,29 @@ void destroy_pv_hash(void)
  }
  
  void destroy_pv_rule(dpl_pv_node_t * rule){
@@ -260,7 +281,7 @@ index 95ec45e..4b96e43 100644
  	}
  	if(rule->match_elem){
  		pv_elem_free_all(rule->match_elem);
-@@ -1028,20 +1093,40 @@ void list_pv_hash(void)
+@@ -1028,20 +1096,40 @@ void list_pv_hash(void)
  
  void list_pv_rule(dpl_pv_node_t * rule)
  {
