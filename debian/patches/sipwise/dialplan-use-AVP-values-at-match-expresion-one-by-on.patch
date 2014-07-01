@@ -1,4 +1,4 @@
-From 12eba5c3d569d553717b18351a3c9c651a5d6ec6 Mon Sep 17 00:00:00 2001
+From 74fa9563ca9bad3d45d4c10a9572bdf4d130d1f8 Mon Sep 17 00:00:00 2001
 From: Victor Seva <linuxmaniac@torreviejawireless.org>
 Date: Sat, 28 Jun 2014 12:37:10 +0200
 Subject: [PATCH] dialplan: use AVP[*] values at match expresion one by one.
@@ -6,8 +6,8 @@ Subject: [PATCH] dialplan: use AVP[*] values at match expresion one by one.
 ---
  modules/dialplan/dialplan.h |  25 +++-
  modules/dialplan/dp_db.c    | 160 ++++++++++++++++-----
- modules/dialplan/dp_repl.c  | 343 +++++++++++++++++++++++++++++++++++++-------
- 3 files changed, 430 insertions(+), 98 deletions(-)
+ modules/dialplan/dp_repl.c  | 341 +++++++++++++++++++++++++++++++++++++-------
+ 3 files changed, 429 insertions(+), 97 deletions(-)
 
 diff --git a/modules/dialplan/dialplan.h b/modules/dialplan/dialplan.h
 index b506853..9e14b44 100644
@@ -280,7 +280,7 @@ index 95ec45e..4f0abc8 100644
  	LM_DBG("--pv_flags:%d\n", flag);
  }
 diff --git a/modules/dialplan/dp_repl.c b/modules/dialplan/dp_repl.c
-index 2a53be4..d0b1379 100644
+index 2a53be4..a0d5d69 100644
 --- a/modules/dialplan/dp_repl.c
 +++ b/modules/dialplan/dp_repl.c
 @@ -127,7 +127,8 @@ error:
@@ -342,15 +342,6 @@ index 2a53be4..d0b1379 100644
  
  	if(!repl_comp){
  		LM_DBG("null replacement\n");
-@@ -317,7 +338,7 @@ int rule_translate(struct sip_msg *msg, str string, dpl_node_t * rule,
- 				size, p + offset);
- 		result->len += size;
- 	}
--
-+	LM_DBG("hi there!\n");
- 	result->s[result->len] = '\0';
- 	return 0;
- 
 @@ -397,59 +418,237 @@ static pcre *reg_ex_comp_pv(const char *pattern, int *cap_cnt)
  	return re;
  }
@@ -443,17 +434,7 @@ index 2a53be4..d0b1379 100644
 +			e->text.s, e->spec);
 +	}
 +}
- 
--	if(rule->orig->pv_flags&DP_PV_SUBST){
--		if(pv_printf_s(msg, rule->subst_elem, &(rule->subst_exp))<0){
-- 			LM_ERR("Can't get subst expression value\n");
-- 			return -1;
-- 		}
-- 		if(rule->subst_comp) pcre_free(rule->subst_comp);
--		rule->subst_comp = reg_ex_comp_pv(rule->subst_exp.s, &cap_cnt);
--		if(!rule->subst_comp){
--			LM_ERR("failed to compile subst expression %.*s\n",
--					rule->subst_exp.len, rule->subst_exp.s);
++
 +int build_pv_regex_comp_helper(struct sip_msg *msg,
 +	dpl_pv_regex_node_p *regex_comp, pv_elem_p elem)
 +{
@@ -480,7 +461,17 @@ index 2a53be4..d0b1379 100644
 +	LM_DBG("expr:[%.*s][%d] added\n", expr.len, expr.s, cap_cnt);
 +	return 0;
 +}
-+
+ 
+-	if(rule->orig->pv_flags&DP_PV_SUBST){
+-		if(pv_printf_s(msg, rule->subst_elem, &(rule->subst_exp))<0){
+- 			LM_ERR("Can't get subst expression value\n");
+- 			return -1;
+- 		}
+- 		if(rule->subst_comp) pcre_free(rule->subst_comp);
+-		rule->subst_comp = reg_ex_comp_pv(rule->subst_exp.s, &cap_cnt);
+-		if(!rule->subst_comp){
+-			LM_ERR("failed to compile subst expression %.*s\n",
+-					rule->subst_exp.len, rule->subst_exp.s);
 +int build_pv_regex_comp(struct sip_msg *msg, dpl_pv_regex_node_p *node,
 +	str expr, pv_elem_p elem, int flag[3])
 +{
