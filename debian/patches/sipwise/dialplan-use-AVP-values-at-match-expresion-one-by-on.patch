@@ -1,4 +1,4 @@
-From ffc0fd5a4769932716b5ee1c7b68624f7a4e800a Mon Sep 17 00:00:00 2001
+From 12eba5c3d569d553717b18351a3c9c651a5d6ec6 Mon Sep 17 00:00:00 2001
 From: Victor Seva <linuxmaniac@torreviejawireless.org>
 Date: Sat, 28 Jun 2014 12:37:10 +0200
 Subject: [PATCH] dialplan: use AVP[*] values at match expresion one by one.
@@ -6,8 +6,8 @@ Subject: [PATCH] dialplan: use AVP[*] values at match expresion one by one.
 ---
  modules/dialplan/dialplan.h |  25 +++-
  modules/dialplan/dp_db.c    | 160 ++++++++++++++++-----
- modules/dialplan/dp_repl.c  | 334 +++++++++++++++++++++++++++++++++++++-------
- 3 files changed, 423 insertions(+), 96 deletions(-)
+ modules/dialplan/dp_repl.c  | 343 +++++++++++++++++++++++++++++++++++++-------
+ 3 files changed, 430 insertions(+), 98 deletions(-)
 
 diff --git a/modules/dialplan/dialplan.h b/modules/dialplan/dialplan.h
 index b506853..9e14b44 100644
@@ -280,7 +280,7 @@ index 95ec45e..4f0abc8 100644
  	LM_DBG("--pv_flags:%d\n", flag);
  }
 diff --git a/modules/dialplan/dp_repl.c b/modules/dialplan/dp_repl.c
-index 2a53be4..0cea34e 100644
+index 2a53be4..d0b1379 100644
 --- a/modules/dialplan/dp_repl.c
 +++ b/modules/dialplan/dp_repl.c
 @@ -127,7 +127,8 @@ error:
@@ -293,7 +293,7 @@ index 2a53be4..0cea34e 100644
  {
  	int repl_nb, offset, match_nb, rc, cap_cnt;
  	struct replace_with token;
-@@ -150,16 +151,36 @@ int rule_translate(struct sip_msg *msg, str string, dpl_node_t * rule,
+@@ -150,21 +151,41 @@ int rule_translate(struct sip_msg *msg, str string, dpl_node_t * rule,
  		return -1;
  	}
  
@@ -336,7 +336,22 @@ index 2a53be4..0cea34e 100644
  	}
  	else{
  		match_exp = rule->match_exp;
-@@ -397,59 +418,232 @@ static pcre *reg_ex_comp_pv(const char *pattern, int *cap_cnt)
+ 	}
+-	repl_comp 	= rule->repl_comp;
++	repl_comp = rule->repl_comp;
+ 
+ 	if(!repl_comp){
+ 		LM_DBG("null replacement\n");
+@@ -317,7 +338,7 @@ int rule_translate(struct sip_msg *msg, str string, dpl_node_t * rule,
+ 				size, p + offset);
+ 		result->len += size;
+ 	}
+-
++	LM_DBG("hi there!\n");
+ 	result->s[result->len] = '\0';
+ 	return 0;
+ 
+@@ -397,59 +418,237 @@ static pcre *reg_ex_comp_pv(const char *pattern, int *cap_cnt)
  	return re;
  }
  
@@ -372,7 +387,7 @@ index 2a53be4..0cea34e 100644
 +	memset(n, 0, sizeof(dpl_pv_regex_node_t));
 +	n->comp = comp;
 +	n->expr.len = expr.len;
-+	n->expr.s = expr.s;
++	if(pkg_str_dup(&n->expr, &expr)<0) { pkg_free(n); return -1; }
 +	n->cap_cnt = cap_cnt;
 +	n->next = *head;
 +	*head = n;
@@ -428,7 +443,17 @@ index 2a53be4..0cea34e 100644
 +			e->text.s, e->spec);
 +	}
 +}
-+
+ 
+-	if(rule->orig->pv_flags&DP_PV_SUBST){
+-		if(pv_printf_s(msg, rule->subst_elem, &(rule->subst_exp))<0){
+- 			LM_ERR("Can't get subst expression value\n");
+- 			return -1;
+- 		}
+- 		if(rule->subst_comp) pcre_free(rule->subst_comp);
+-		rule->subst_comp = reg_ex_comp_pv(rule->subst_exp.s, &cap_cnt);
+-		if(!rule->subst_comp){
+-			LM_ERR("failed to compile subst expression %.*s\n",
+-					rule->subst_exp.len, rule->subst_exp.s);
 +int build_pv_regex_comp_helper(struct sip_msg *msg,
 +	dpl_pv_regex_node_p *regex_comp, pv_elem_p elem)
 +{
@@ -455,17 +480,7 @@ index 2a53be4..0cea34e 100644
 +	LM_DBG("expr:[%.*s][%d] added\n", expr.len, expr.s, cap_cnt);
 +	return 0;
 +}
- 
--	if(rule->orig->pv_flags&DP_PV_SUBST){
--		if(pv_printf_s(msg, rule->subst_elem, &(rule->subst_exp))<0){
-- 			LM_ERR("Can't get subst expression value\n");
-- 			return -1;
-- 		}
-- 		if(rule->subst_comp) pcre_free(rule->subst_comp);
--		rule->subst_comp = reg_ex_comp_pv(rule->subst_exp.s, &cap_cnt);
--		if(!rule->subst_comp){
--			LM_ERR("failed to compile subst expression %.*s\n",
--					rule->subst_exp.len, rule->subst_exp.s);
++
 +int build_pv_regex_comp(struct sip_msg *msg, dpl_pv_regex_node_p *node,
 +	str expr, pv_elem_p elem, int flag[3])
 +{
@@ -493,7 +508,12 @@ index 2a53be4..0cea34e 100644
 +	else if(flag[2]) /* DP_PV_[MATCH|SUBST]_AVP */
 +	{
 +		LM_DBG("avp regex\n");
-+		if(get_pv_avp_param(elem, &avp_param)<0) return -1;
++		if(get_pv_avp_param(elem, &avp_param)<0)
++		{
++			LM_DBG("cannot get avp_param from elem[%p]\n", elem);
++			dlp_print_elem(elem);
++			return -1;
++		}
 +		if(pv_get_avp_name(msg, avp_param, &avp_name, &name_type)!=0)
 +		{
 +			LM_ERR("invalid avp name\n");
@@ -537,11 +557,10 @@ index 2a53be4..0cea34e 100644
 +			avp = search_next_avp(&state, &avp_value);
 +			num++;
 +		}
- 	}
++	}
 +	return 0;
 +}
- 
--	if(rule->orig->pv_flags&DP_PV_MASK) {
++
 +int build_pv_comp(struct sip_msg *msg, dpl_pv_node_p rule)
 +{
 +	struct subst_expr *repl_comp;
@@ -567,8 +586,9 @@ index 2a53be4..0cea34e 100644
 +		if(rule->match) free_pv_regex_node(&rule->match);
 +		if(build_pv_regex_comp(msg, &rule->match, rule->orig->match_exp,
 +			rule->match_elem, flags[0])<0) return -1;
-+	}
-+
+ 	}
+ 
+-	if(rule->orig->pv_flags&DP_PV_MASK) {
 +	if(rule->orig->pv_flags&DP_PV_SUBST||rule->orig->pv_flags&DP_PV_SUBST_AVP)
 +	{
 +		LM_DBG("build subst\n");
@@ -606,7 +626,7 @@ index 2a53be4..0cea34e 100644
  	return 0;
  }
  
-@@ -461,7 +655,8 @@ int translate(struct sip_msg *msg, str input, str *output, dpl_id_p idp,
+@@ -461,7 +660,8 @@ int translate(struct sip_msg *msg, str input, str *output, dpl_id_p idp,
  	dpl_node_p rulep;
  	dpl_pv_node_p rule_pv;
  	dpl_index_p indexp;
@@ -616,7 +636,7 @@ index 2a53be4..0cea34e 100644
  	int user_len, rez;
  	char b;
  
-@@ -482,11 +677,13 @@ int translate(struct sip_msg *msg, str input, str *output, dpl_id_p idp,
+@@ -482,11 +682,13 @@ int translate(struct sip_msg *msg, str input, str *output, dpl_id_p idp,
  
  search_rule:
  	for(rulep=indexp->first_rule; rulep!=NULL; rulep= rulep->next) {
@@ -632,7 +652,7 @@ index 2a53be4..0cea34e 100644
  					if(!msg) {
  						LM_ERR("Cannot translate using a regex match with pv "
  							"without message\n");
-@@ -498,16 +695,31 @@ search_rule:
+@@ -498,16 +700,31 @@ search_rule:
  							LM_ERR("error rule regex comp. Skip this\n");
  							continue;
  						}
@@ -640,8 +660,8 @@ index 2a53be4..0cea34e 100644
 +						n = rule_pv->match;
 +						while(n)
 +						{
-+							LM_DBG("match check: [%.*s]\n", n->expr.len,
-+								n->expr.s);
++							LM_DBG("match check: [%.*s][%p]\n", n->expr.len,
++								n->expr.s, n->comp);
 +							rez = pcre_exec(n->comp, NULL, input.s,
 +									input.len, 0, 0, NULL, 0);
 +							if(rez >= 0)
@@ -667,7 +687,7 @@ index 2a53be4..0cea34e 100644
  				break;
  
  			case DP_EQUAL_OP:
-@@ -549,8 +761,9 @@ search_rule:
+@@ -549,8 +766,9 @@ search_rule:
  	return -1;
  
  repl:
@@ -678,7 +698,7 @@ index 2a53be4..0cea34e 100644
  			rulep->pv_flags);
  
  	if(attrs) {
-@@ -576,10 +789,25 @@ repl:
+@@ -576,10 +794,25 @@ repl:
  	if(!(rulep->pv_flags&DP_PV_MASK))
  		rule_pv = NULL;
  
