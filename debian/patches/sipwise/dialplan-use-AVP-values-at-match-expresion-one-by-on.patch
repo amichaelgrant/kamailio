@@ -1,19 +1,19 @@
-From 74fa9563ca9bad3d45d4c10a9572bdf4d130d1f8 Mon Sep 17 00:00:00 2001
+From 5214102b56dd847481bbaa991f002b4af0f87eca Mon Sep 17 00:00:00 2001
 From: Victor Seva <linuxmaniac@torreviejawireless.org>
 Date: Sat, 28 Jun 2014 12:37:10 +0200
 Subject: [PATCH] dialplan: use AVP[*] values at match expresion one by one.
 
 ---
- modules/dialplan/dialplan.h |  25 +++-
- modules/dialplan/dp_db.c    | 160 ++++++++++++++++-----
- modules/dialplan/dp_repl.c  | 341 +++++++++++++++++++++++++++++++++++++-------
- 3 files changed, 429 insertions(+), 97 deletions(-)
+ modules/dialplan/dialplan.h |  24 ++-
+ modules/dialplan/dp_db.c    | 167 +++++++++++++++------
+ modules/dialplan/dp_repl.c  | 350 +++++++++++++++++++++++++++++++++++++-------
+ 3 files changed, 440 insertions(+), 101 deletions(-)
 
 diff --git a/modules/dialplan/dialplan.h b/modules/dialplan/dialplan.h
-index b506853..9e14b44 100644
+index b506853..dcebdcf 100644
 --- a/modules/dialplan/dialplan.h
 +++ b/modules/dialplan/dialplan.h
-@@ -46,10 +46,13 @@
+@@ -46,10 +46,12 @@
  
  #define DP_PV_MATCH		(1 << 0)
  #define DP_PV_MATCH_M	(1 << 1) /* PV_MARKER at the end */
@@ -25,12 +25,11 @@ index b506853..9e14b44 100644
 +#define DP_PV_SUBST_AVP (1 << 5) /* AVP WITH AVP_INDEX_ALL */
  
 -#define DP_PV_MASK (DP_PV_MATCH|DP_PV_SUBST)
-+#define DP_PV_AVP_MASK (DP_PV_MATCH_AVP|DP_PV_SUBST_AVP)
-+#define DP_PV_MASK (DP_PV_MATCH|DP_PV_SUBST|DP_PV_AVP_MASK)
++#define DP_PV_MASK (DP_PV_MATCH|DP_PV_SUBST|DP_PV_MATCH_AVP|DP_PV_SUBST_AVP)
  #define DP_PV_MATCH_MASK (DP_PV_MATCH|DP_PV_MATCH_M)
  #define DP_PV_SUBST_MASK (DP_PV_SUBST|DP_PV_SUBST_M)
  
-@@ -85,10 +88,18 @@ typedef struct dpl_id{
+@@ -85,10 +87,18 @@ typedef struct dpl_id{
  	struct dpl_id * next;
  }dpl_id_t,*dpl_id_p;
  
@@ -51,7 +50,7 @@ index b506853..9e14b44 100644
  
  	struct dpl_pv_node * next; /* next rule */
  	struct dpl_node * orig; /* shared rule */
-@@ -131,5 +142,7 @@ dpl_pv_id_p select_pv_dpid(int id);
+@@ -131,5 +141,7 @@ dpl_pv_id_p select_pv_dpid(int id);
  struct subst_expr* repl_exp_parse(str subst);
  void repl_expr_free(struct subst_expr *se);
  int translate(struct sip_msg *msg, str user_name, str* repl_user, dpl_id_p idp, str *);
@@ -61,15 +60,33 @@ index b506853..9e14b44 100644
 +	str *match_expr, str *);
  #endif
 diff --git a/modules/dialplan/dp_db.c b/modules/dialplan/dp_db.c
-index 95ec45e..4f0abc8 100644
+index 95ec45e..4b96e43 100644
 --- a/modules/dialplan/dp_db.c
 +++ b/modules/dialplan/dp_db.c
-@@ -395,41 +395,95 @@ int check_pv_marker(str orig, str *dest)
+@@ -206,6 +206,7 @@ void destroy_pv_data(void)
+ 	if(rules_pv_hash) {
+ 		destroy_pv_hash();
+ 		rules_pv_hash = NULL;
++		pv_revision = -1;
+ 	}
+ }
+ 
+@@ -378,7 +379,7 @@ static pcre *reg_ex_comp(const char *pattern, int *cap_cnt)
+ 	return result;
+ }
+ 
+-int check_pv_marker(str orig, str *dest)
++int check_pv_marker(const str orig, str *dest)
+ {
+ 	if(dest==NULL||orig.len<1) return -1;
+ 	dest->s = orig.s;
+@@ -395,41 +396,96 @@ int check_pv_marker(str orig, str *dest)
  	}
  }
  
 -dpl_pv_node_t * build_pv_rule(dpl_node_t *rule)
-+int set_pv_regex_avp_flag(pv_elem_p elem, unsigned int *pv_flags, int match)
++int set_pv_regex_avp_flag(const pv_elem_p elem, unsigned int *pv_flags,
++	const int match)
 +{
 +	int num, num_elem;
 +	pv_elem_p e;
@@ -107,8 +124,8 @@ index 95ec45e..4f0abc8 100644
 +	return 1;
 +}
 +
-+int build_pv_rule_helper(str orig, str *dest, int flag_m, pv_elem_p *elem,
-+	unsigned int *pv_flags, int match)
++int build_pv_rule_helper(const str orig, str *dest, const int flag_m,
++	pv_elem_p *elem, unsigned int *pv_flags, const int match)
 +{
 +
 +	dest->s = orig.s;
@@ -137,7 +154,7 @@ index 95ec45e..4f0abc8 100644
 +	return 0;
 +}
 +
-+dpl_pv_node_t * build_pv_rule(dpl_node_p rule)
++dpl_pv_node_t * build_pv_rule(const dpl_node_p rule)
  {
  	pv_elem_p match_elem = NULL, subst_elem = NULL;
 -	str match_exp = {NULL,0}, subst_exp = {NULL,0};
@@ -181,7 +198,7 @@ index 95ec45e..4f0abc8 100644
  	}
  
  	if(rule->pv_flags&DP_PV_MASK){
-@@ -439,13 +493,10 @@ dpl_pv_node_t * build_pv_rule(dpl_node_t *rule)
+@@ -439,13 +495,10 @@ dpl_pv_node_t * build_pv_rule(dpl_node_t *rule)
  			goto err;
  		}
  		memset(new_rule, 0, sizeof(dpl_pv_node_t));
@@ -198,7 +215,16 @@ index 95ec45e..4f0abc8 100644
  	}
  	return new_rule;
  
-@@ -883,17 +934,29 @@ void destroy_pv_hash(void)
+@@ -678,7 +731,7 @@ err:
+ 	return -1;
+ }
+ 
+-int add_rule2hash_pv(dpl_pv_node_t * rule)
++int add_rule2hash_pv(const dpl_pv_node_p rule)
+ {
+ 	dpl_pv_id_p crt_idp, last_idp;
+ 	dpl_pv_index_p indexp, last_indexp, new_indexp;
+@@ -883,17 +936,29 @@ void destroy_pv_hash(void)
  }
  
  void destroy_pv_rule(dpl_pv_node_t * rule){
@@ -234,7 +260,7 @@ index 95ec45e..4f0abc8 100644
  	}
  	if(rule->match_elem){
  		pv_elem_free_all(rule->match_elem);
-@@ -1028,10 +1091,30 @@ void list_pv_hash(void)
+@@ -1028,20 +1093,40 @@ void list_pv_hash(void)
  
  void list_pv_rule(dpl_pv_node_t * rule)
  {
@@ -269,18 +295,20 @@ index 95ec45e..4f0abc8 100644
  }
  
  void show_pv_flags(unsigned int flag)
-@@ -1042,6 +1125,9 @@ void show_pv_flags(unsigned int flag)
+ {
+ 	if(flag&DP_PV_MATCH) LM_DBG("DP_PV_MATCH\n");
+ 	if(flag&DP_PV_MATCH_M) LM_DBG("DP_PV_MATCH_M\n");
+-	if(flag&DP_PV_MATCH_MASK) LM_DBG("DP_PV_MATCH_MASK\n");
  	if(flag&DP_PV_SUBST) LM_DBG("DP_PV_SUBST\n");
  	if(flag&DP_PV_SUBST_M) LM_DBG("DP_PV_SUBST_M\n");
- 	if(flag&DP_PV_SUBST_MASK) LM_DBG("DP_PV_SUBST_MASK\n");
+-	if(flag&DP_PV_SUBST_MASK) LM_DBG("DP_PV_SUBST_MASK\n");
 +	if(flag&DP_PV_MATCH_AVP) LM_DBG("DP_PV_MATCH_AVP\n");
 +	if(flag&DP_PV_SUBST_AVP) LM_DBG("DP_PV_SUBST_AVP\n");
-+	if(flag&DP_PV_AVP_MASK) LM_DBG("DP_PV_AVP_MASK\n");
  	if(flag&DP_PV_MASK) LM_DBG("DP_PV_MASK\n");
  	LM_DBG("--pv_flags:%d\n", flag);
  }
 diff --git a/modules/dialplan/dp_repl.c b/modules/dialplan/dp_repl.c
-index 2a53be4..a0d5d69 100644
+index 2a53be4..2e3b207 100644
 --- a/modules/dialplan/dp_repl.c
 +++ b/modules/dialplan/dp_repl.c
 @@ -127,7 +127,8 @@ error:
@@ -548,7 +576,7 @@ index 2a53be4..a0d5d69 100644
 +			avp = search_next_avp(&state, &avp_value);
 +			num++;
 +		}
-+	}
+ 	}
 +	return 0;
 +}
 +
@@ -570,16 +598,16 @@ index 2a53be4..a0d5d69 100644
 +	};
 +	if(!rule)
 +		return -1;
-+
+ 
+-	if(rule->orig->pv_flags&DP_PV_MASK) {
 +	if(rule->orig->pv_flags&DP_PV_MATCH||rule->orig->pv_flags&DP_PV_MATCH_AVP)
 +	{
 +		LM_DBG("build match\n");
 +		if(rule->match) free_pv_regex_node(&rule->match);
 +		if(build_pv_regex_comp(msg, &rule->match, rule->orig->match_exp,
 +			rule->match_elem, flags[0])<0) return -1;
- 	}
- 
--	if(rule->orig->pv_flags&DP_PV_MASK) {
++	}
++
 +	if(rule->orig->pv_flags&DP_PV_SUBST||rule->orig->pv_flags&DP_PV_SUBST_AVP)
 +	{
 +		LM_DBG("build subst\n");
@@ -627,7 +655,7 @@ index 2a53be4..a0d5d69 100644
  	int user_len, rez;
  	char b;
  
-@@ -482,11 +682,13 @@ int translate(struct sip_msg *msg, str input, str *output, dpl_id_p idp,
+@@ -482,11 +682,14 @@ int translate(struct sip_msg *msg, str input, str *output, dpl_id_p idp,
  
  search_rule:
  	for(rulep=indexp->first_rule; rulep!=NULL; rulep= rulep->next) {
@@ -637,13 +665,26 @@ index 2a53be4..a0d5d69 100644
  			case DP_REGEX_OP:
 -				LM_DBG("regex operator testing\n");
 -				if(rulep->pv_flags&DP_PV_MATCH) {
-+				LM_DBG("regex operator testing pv_flags[%d]\n", rulep->pv_flags);
++				LM_DBG("regex operator testing[%.*s] pv_flags[%d]\n",
++					rulep->match_exp.len, rulep->match_exp.s, rulep->pv_flags);
 +				if(rulep->pv_flags&DP_PV_MATCH||rulep->pv_flags&DP_PV_MATCH_AVP)
 +				{
  					if(!msg) {
  						LM_ERR("Cannot translate using a regex match with pv "
  							"without message\n");
-@@ -498,16 +700,31 @@ search_rule:
+@@ -494,20 +697,43 @@ search_rule:
+ 					}
+ 					rule_pv = get_pv_rule(rulep, idp->dp_id, user_len);
+ 					if(rule_pv) {
++						if(rulep->pv_flags&(DP_PV_MATCH_AVP|DP_PV_SUBST_AVP) &&
++							(!rule_pv->match_elem || !rule_pv->subst_elem))
++						{
++							LM_ERR("AVP match_elem[%p] or subst_elem[%p] are null."
++								" Skip this\n", rule_pv->match_elem,
++								rule_pv->subst_elem);
++							continue;
++						}
+ 						if(build_pv_comp(msg, rule_pv)<0){
  							LM_ERR("error rule regex comp. Skip this\n");
  							continue;
  						}
@@ -678,7 +719,7 @@ index 2a53be4..a0d5d69 100644
  				break;
  
  			case DP_EQUAL_OP:
-@@ -549,8 +766,9 @@ search_rule:
+@@ -549,8 +775,9 @@ search_rule:
  	return -1;
  
  repl:
@@ -689,7 +730,7 @@ index 2a53be4..a0d5d69 100644
  			rulep->pv_flags);
  
  	if(attrs) {
-@@ -576,10 +794,25 @@ repl:
+@@ -576,10 +803,25 @@ repl:
  	if(!(rulep->pv_flags&DP_PV_MASK))
  		rule_pv = NULL;
  
