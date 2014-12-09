@@ -1,0 +1,26 @@
+From 2c61fc8af3766844084c3ab669ded2527e458a63 Mon Sep 17 00:00:00 2001
+From: Ovidiu Sas <osas@voipembedded.com>
+Date: Thu, 27 Nov 2014 16:16:26 -0500
+Subject: [PATCH] tm: fix warning: may be used uninitialized in this function
+
+(cherry picked from commit 76ad065338e6970c09c5ed8bc0f84fd2bfdf0ac2)
+---
+ modules/tm/t_append_branches.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/modules/tm/t_append_branches.c b/modules/tm/t_append_branches.c
+index 566a642..be9731b 100644
+--- a/modules/tm/t_append_branches.c
++++ b/modules/tm/t_append_branches.c
+@@ -50,7 +50,7 @@
+ 
+ int t_append_branches(void) {
+ 	struct cell *t = NULL;
+-	struct sip_msg *orig_msg;
++	struct sip_msg *orig_msg = NULL;
+ 	short outgoings;
+ 
+ 	int success_branch;
+-- 
+2.1.3
+

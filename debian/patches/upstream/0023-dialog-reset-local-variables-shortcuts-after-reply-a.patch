@@ -1,0 +1,134 @@
+From 8a6660697bf08d0522fcd7ffa60698ebcdc4f990 Mon Sep 17 00:00:00 2001
+From: Daniel-Constantin Mierla <miconda@gmail.com>
+Date: Wed, 10 Dec 2014 10:54:56 +0100
+Subject: [PATCH] dialog: reset local variables shortcuts after reply and
+ failure processing
+
+- avoid using wrong values to find dialogs with processing of next messages
+- reported by Julia Boudniatsky
+
+(cherry picked from commit dcdb73d792719e38844eef60f821365b587893d7)
+---
+ modules/dialog/dialog.c      | 10 ++++++++++
+ modules/dialog/dlg_profile.c | 21 +++++++++++++++++++++
+ modules/dialog/dlg_profile.h | 10 ++++++++++
+ modules/dialog/dlg_var.c     | 15 +++++++++++++++
+ modules/dialog/dlg_var.h     |  2 ++
+ 5 files changed, 58 insertions(+)
+
+diff --git a/modules/dialog/dialog.c b/modules/dialog/dialog.c
+index 8cc0d5e..58c40da 100644
+--- a/modules/dialog/dialog.c
++++ b/modules/dialog/dialog.c
+@@ -626,6 +626,16 @@ static int mod_init(void)
+ 		return -1;
+ 	}
+ 
++	if (register_script_cb( cb_dlg_locals_reset, POST_SCRIPT_CB|ONREPLY_CB_TYPE,0)<0) {
++		LM_ERR("cannot register reply post-script dlg locals reset callback\n");
++		return -1;
++	}
++
++	if (register_script_cb( cb_dlg_locals_reset, POST_SCRIPT_CB|FAILURE_CB_TYPE,0)<0) {
++		LM_ERR("cannot register failure post-script dlg locals reset callback\n");
++		return -1;
++	}
++
+ 	if(dlg_timer_procs<=0) {
+ 		if ( register_timer( dlg_timer_routine, 0, 1)<0 ) {
+ 			LM_ERR("failed to register timer \n");
+diff --git a/modules/dialog/dlg_profile.c b/modules/dialog/dlg_profile.c
+index 7e26e9c..b459ac5 100644
+--- a/modules/dialog/dlg_profile.c
++++ b/modules/dialog/dlg_profile.c
+@@ -409,6 +409,27 @@ int remove_profile(dlg_profile_table_t *profile, str *value, str *puid)
+ 
+ 
+ /*!
++ * \brief Callback for cleanup of profile local vars
++ * \param msg SIP message
++ * \param flags unused
++ * \param param unused
++ * \return 1
++ */
++int cb_profile_reset( struct sip_msg *msg, unsigned int flags, void *param )
++{
++	current_dlg_msg_id = 0;
++	current_dlg_msg_pid = 0;
++	if (current_pending_linkers) {
++		destroy_linkers(current_pending_linkers);
++		current_pending_linkers = NULL;
++	}
++
++	/* need to return non-zero - 0 will break the exec of the request */
++	return 1;
++}
++
++
++/*!
+  * \brief Cleanup a profile
+  * \param msg SIP message
+  * \param flags unused
+diff --git a/modules/dialog/dlg_profile.h b/modules/dialog/dlg_profile.h
+index 29625e4..07fb2b5 100644
+--- a/modules/dialog/dlg_profile.h
++++ b/modules/dialog/dlg_profile.h
+@@ -116,6 +116,16 @@ struct dlg_profile_table* search_dlg_profile(str *name);
+ 
+ 
+ /*!
++ * \brief Callback for cleanup of profile local vars
++ * \param msg SIP message
++ * \param flags unused
++ * \param param unused
++ * \return 1
++ */
++int cb_profile_reset( struct sip_msg *msg, unsigned int flags, void *param );
++
++
++/*!
+  * \brief Cleanup a profile
+  * \param msg SIP message
+  * \param flags unused
+diff --git a/modules/dialog/dlg_var.c b/modules/dialog/dlg_var.c
+index c61cb7f..ccd316d 100644
+--- a/modules/dialog/dlg_var.c
++++ b/modules/dialog/dlg_var.c
+@@ -69,6 +69,21 @@ int dlg_cfg_cb(sip_msg_t *msg, unsigned int flags, void *cbp)
+ 	return 1;
+ }
+ 
++int cb_dlg_cfg_reset(sip_msg_t *msg, unsigned int flags, void *cbp)
++{
++	memset(&_dlg_ctx, 0, sizeof(dlg_ctx_t));
++
++	return 1;
++}
++
++int cb_dlg_locals_reset(sip_msg_t *msg, unsigned int flags, void *cbp)
++{
++	LM_DBG("resetting the local dialog shortcuts\n");
++	cb_dlg_cfg_reset(msg, flags, cbp);
++	cb_profile_reset(msg, flags, cbp);
++
++	return 1;
++}
+ 
+ static inline struct dlg_var *new_dlg_var(str *key, str *val)
+ {
+diff --git a/modules/dialog/dlg_var.h b/modules/dialog/dlg_var.h
+index a8b43cd..7691a16 100644
+--- a/modules/dialog/dlg_var.h
++++ b/modules/dialog/dlg_var.h
+@@ -82,6 +82,8 @@ int pv_get_dlg(sip_msg_t *msg,  pv_param_t *param,
+ int pv_parse_dlg_name(pv_spec_p sp, str *in);
+ 
+ int dlg_cfg_cb(sip_msg_t *foo, unsigned int flags, void *bar);
++int cb_dlg_cfg_reset(sip_msg_t *msg, unsigned int flags, void *cbp);
++int cb_dlg_locals_reset(sip_msg_t *msg, unsigned int flags, void *cbp);
+ 
+ void dlg_set_ctx_iuid(dlg_cell_t *dlg);
+ void dlg_reset_ctx_iuid(void);
+-- 
+2.1.4
+

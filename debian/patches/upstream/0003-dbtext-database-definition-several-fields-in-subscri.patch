@@ -1,0 +1,20 @@
+From 32791c6329bc54ad0b542c2459489a83433eae3c Mon Sep 17 00:00:00 2001
+From: "Olle E. Johansson" <oej@edvina.net>
+Date: Wed, 19 Nov 2014 13:15:36 +0000
+Subject: [PATCH] dbtext database definition: several fields in subscriber can
+ be null
+
+---
+ utils/kamctl/dbtext/kamailio/subscriber | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/utils/kamctl/dbtext/kamailio/subscriber b/utils/kamctl/dbtext/kamailio/subscriber
+index 05f626c..bb335c0 100644
+--- a/utils/kamctl/dbtext/kamailio/subscriber
++++ b/utils/kamctl/dbtext/kamailio/subscriber
+@@ -1 +1 @@
+-id(int,auto) username(string) domain(string) password(string) email_address(string) ha1(string) ha1b(string) rpid(string,null) 
++id(int,auto) username(string) domain(string) password(string) email_address(string,null) ha1(string,null) ha1b(string,null) rpid(string,null) 
+-- 
+2.1.3
+

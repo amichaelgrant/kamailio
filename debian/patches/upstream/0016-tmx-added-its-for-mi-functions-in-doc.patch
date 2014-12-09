@@ -1,0 +1,64 @@
+From a9fc427270ad903a08042fcbc71d45ad4781474a Mon Sep 17 00:00:00 2001
+From: Daniel-Constantin Mierla <miconda@gmail.com>
+Date: Sun, 7 Dec 2014 12:23:07 +0100
+Subject: [PATCH] tmx: added its for mi functions in doc
+
+- better indexing for web
+
+(cherry picked from commit 7d6c87d4ba129dd2e7d28e183dbbf43b2df12557)
+---
+ modules/tmx/doc/tmx_admin.xml | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/modules/tmx/doc/tmx_admin.xml b/modules/tmx/doc/tmx_admin.xml
+index cb4a834..9958185 100644
+--- a/modules/tmx/doc/tmx_admin.xml
++++ b/modules/tmx/doc/tmx_admin.xml
+@@ -465,7 +465,7 @@ event_route [tm:branch-failure:contact] {
+ 	<section>
+ 	<title>MI Commands</title>
+ 
+-	<section>
++	<section id="tmx.mi.t_uac_dlg">
+ 		<title>
+ 		<function moreinfo="none">t_uac_dlg</function>
+ 		</title>
+@@ -503,7 +503,7 @@ event_route [tm:branch-failure:contact] {
+ 		</itemizedlist>
+ 	</section>
+ 
+-	<section>
++	<section id="tmx.mi.t_uac_cancel">
+ 		<title>
+ 		<function moreinfo="none">t_uac_cancel</function>
+ 		</title>
+@@ -523,7 +523,7 @@ event_route [tm:branch-failure:contact] {
+ 		</itemizedlist>
+ 	</section>
+ 
+-	<section>
++	<section id="tmx.mi.t_hash">
+ 		<title>
+ 		<function moreinfo="none">t_hash</function>
+ 		</title>
+@@ -538,7 +538,7 @@ event_route [tm:branch-failure:contact] {
+ 		</itemizedlist>
+ 	</section>
+ 
+-	<section>
++	<section id="tmx.mi.t_reply">
+ 		<title>
+ 		<function moreinfo="none">t_reply</function>
+ 		</title>
+@@ -573,7 +573,7 @@ event_route [tm:branch-failure:contact] {
+ 			</para></listitem>
+ 		</itemizedlist>
+ 	</section>
+-	<section>
++	<section id="tmx.mi.t_reply_callid">
+ 		<title>
+ 		<function moreinfo="none">t_reply_callid</function>
+ 		</title>
+-- 
+2.1.3
+

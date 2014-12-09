@@ -1,0 +1,98 @@
+From a2aa22d8f23a8bcad0ed83831d0f6f10e9059a7c Mon Sep 17 00:00:00 2001
+From: Victor Seva <linuxmaniac@torreviejawireless.org>
+Date: Thu, 18 Dec 2014 21:41:46 +0100
+Subject: [PATCH] pkg/kamailio: Initial Travis CI configuration
+
+(cherry picked from commit 3cdfb23b6e9d13fea3ee0994b450279c3cc6a488)
+---
+ .travis.yml                      | 17 +++++++++++++++++
+ pkg/kamailio/deb/build_deps.sh   | 23 +++++++++++++++++++++++
+ pkg/kamailio/deb/build_travis.sh | 22 ++++++++++++++++++++++
+ 3 files changed, 62 insertions(+)
+ create mode 100644 .travis.yml
+ create mode 100755 pkg/kamailio/deb/build_deps.sh
+ create mode 100755 pkg/kamailio/deb/build_travis.sh
+
+diff --git a/.travis.yml b/.travis.yml
+new file mode 100644
+index 0000000..d5b76b0
+--- /dev/null
++++ b/.travis.yml
+@@ -0,0 +1,17 @@
++language: c
++compiler:
++  - gcc
++  - clang
++before_install:
++  - sudo apt-get update -qq
++  - sudo apt-get install -y gdebi-core
++  - sudo pkg/kamailio/deb/build_deps.sh precise $TRAVIS_BUILD_DIR
++script: ./pkg/kamailio/deb/build_travis.sh
++notifications:
++  irc:
++    channels:
++      - "chat.freenode.net#Kamailio"
++    on_success: change
++    on_failure: always
++  email:
++    - sr-dev@lists.sip-router.org
+diff --git a/pkg/kamailio/deb/build_deps.sh b/pkg/kamailio/deb/build_deps.sh
+new file mode 100755
+index 0000000..10387b2
+--- /dev/null
++++ b/pkg/kamailio/deb/build_deps.sh
+@@ -0,0 +1,23 @@
++#!/bin/bash
++#
++# build_deps script for travis CI
++# installs the build_deps packages needed to build Kamailio
++# environment based on Ubuntu 12.04 LTS (precise)
++#
++DIST=${1:-precise}
++BASE_DIR=${2:-$(pwd)}
++CONTROL_FILE="${BASE_DIR}/pkg/kamailio/deb/${DIST}/control"
++if ! [ -f "${CONTROL_FILE}" ]; then
++	echo "Error: No ${CONTROL_FILE} found"
++	exit 1
++fi
++
++BUILD_DEPS=$(/usr/bin/gdebi --quiet --non-interactive \
++	--option=APT::Install-Recommends=false \
++	--apt-line ${CONTROL_FILE})
++if [ -z "${BUILD_DEPS}" ]; then
++	echo "Error: no build deps packages resolved"
++	exit 2
++fi
++
++apt-get install -y $BUILD_DEPS
+diff --git a/pkg/kamailio/deb/build_travis.sh b/pkg/kamailio/deb/build_travis.sh
+new file mode 100755
+index 0000000..a18b2e7
+--- /dev/null
++++ b/pkg/kamailio/deb/build_travis.sh
+@@ -0,0 +1,22 @@
++#!/bin/bash
++#
++# build script for travis CI
++# environment based on Ubuntu 12.04 LTS (precise)
++#
++export JAVA_HOME="/usr/lib/jvm/java-gcj"
++EXCLUDED_MODULES=""
++EXTRA_EXCLUDED_MODULES="bdb dbtext oracle pa iptrtpproxy mi_xmlrpc dnssec kazoo cnxcc"
++PACKAGE_GROUPS="mysql postgres berkeley unixodbc radius presence ldap xml perl utils lua memcached \
++	snmpstats carrierroute xmpp cpl redis python geoip\
++	sqlite json mono ims sctp java \
++	purple tls outbound websocket autheph"
++echo "make cfg"
++make FLAVOUR=kamailio cfg \
++	skip_modules="${EXCLUDED_MODULES} ${EXTRA_EXCLUDED_MODULES}" \
++	group_include="kstandard"
++echo "make all"
++make all
++echo "make groups"
++for grp in ${PACKAGE_GROUPS}; do
++	make every-module group_include="k${grp}"
++done
+-- 
+2.1.4
+

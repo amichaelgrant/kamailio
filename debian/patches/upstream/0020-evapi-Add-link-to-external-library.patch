@@ -1,0 +1,40 @@
+From 0a377769262f95579878b6a48fad04fcdfca1e79 Mon Sep 17 00:00:00 2001
+From: "Olle E. Johansson" <oej@edvina.net>
+Date: Sun, 7 Dec 2014 09:19:00 +0100
+Subject: [PATCH] evapi Add link to external library. (cherry picked from
+ commit 8370ef43f0fbd2ee447ab65c5b5172677a47f644)
+
+---
+ modules/evapi/README              | 2 +-
+ modules/evapi/doc/evapi_admin.xml | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/modules/evapi/README b/modules/evapi/README
+index d62b7f4..6035cce 100644
+--- a/modules/evapi/README
++++ b/modules/evapi/README
+@@ -109,7 +109,7 @@ Chapter 1. Admin Guide
+ 
+    The following libraries or applications must be installed before
+    running Kamailio with this module loaded:
+-     * libev
++     * libev - http://software.schmorp.de/pkg/libev
+ 
+ 3. Parameters
+ 
+diff --git a/modules/evapi/doc/evapi_admin.xml b/modules/evapi/doc/evapi_admin.xml
+index 281e4d3..ef2e34a 100644
+--- a/modules/evapi/doc/evapi_admin.xml
++++ b/modules/evapi/doc/evapi_admin.xml
+@@ -54,7 +54,7 @@
+ 			<itemizedlist>
+ 			<listitem>
+ 			<para>
+-				<emphasis>libev</emphasis>
++				<emphasis>libev</emphasis> - <ulink url="http://software.schmorp.de/pkg/libev">http://software.schmorp.de/pkg/libev</ulink>
+ 			</para>
+ 			</listitem>
+ 			</itemizedlist>
+-- 
+2.1.3
+

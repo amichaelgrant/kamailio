@@ -1,0 +1,35 @@
+From 9eb85067e4c93ad952f87abcfc1d2ede6d194b97 Mon Sep 17 00:00:00 2001
+From: Daniel-Constantin Mierla <miconda@gmail.com>
+Date: Tue, 25 Nov 2014 16:07:31 +0100
+Subject: [PATCH] kamctl: supress all output of which command searching for
+ g/readlink
+
+- based on patch and report by Morten Tryfoss, FS#492
+
+(cherry picked from commit ed301d16f30195d9352245f782269f2b3ddf40cf)
+---
+ utils/kamctl/kamctl | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/utils/kamctl/kamctl b/utils/kamctl/kamctl
+index f1b3109..9fcd170 100755
+--- a/utils/kamctl/kamctl
++++ b/utils/kamctl/kamctl
+@@ -16,12 +16,12 @@ TEST="false"
+ ### include config files
+ 
+ # check for rc file at same location with kamctl
+-which greadlink > /dev/null
++which greadlink >/dev/null 2>&1
+ ret=$?
+ if [ $ret -eq 0 ] ; then
+ 	KAMCTLFULLPATH=$(greadlink -f "$0")
+ else
+-	which readlink > /dev/null
++	which readlink >/dev/null 2>&1
+ 	ret=$?
+ 	if [ $ret -eq 0 ] ; then
+ 		KAMCTLFULLPATH=$(readlink -f "$0")
+-- 
+2.1.3
+

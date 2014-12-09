@@ -1,0 +1,26 @@
+From d80dfcc179af4cb45552722887a35cfe8efcc435 Mon Sep 17 00:00:00 2001
+From: Daniel-Constantin Mierla <miconda@gmail.com>
+Date: Thu, 11 Dec 2014 23:37:24 +0100
+Subject: [PATCH] core: set log prefix only for sip messages
+
+(cherry picked from commit 79a23a4fc154ad1ff174c3a8c2a14c3c5f85f402)
+---
+ dprint.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/dprint.c b/dprint.c
+index caf39c3..9bc9d93 100644
+--- a/dprint.c
++++ b/dprint.c
+@@ -396,7 +396,7 @@ void log_prefix_set(sip_msg_t *msg)
+ {
+ 	if(log_prefix_pvs == NULL)
+ 		return;
+-	if(msg==NULL) {
++	if(msg==NULL || !IS_SIP(msg)) {
+ 		log_prefix_val = NULL;
+ 		return;
+ 	}
+-- 
+2.1.4
+

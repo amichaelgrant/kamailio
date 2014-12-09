@@ -9,14 +9,14 @@
  static str nortpproxy_str = str_init("a=nortpproxy:yes");
  
 @@ -424,6 +425,7 @@
- 	{"natping_socket",        STR_PARAM, &natping_socket        },
+ 	{"natping_socket",        PARAM_STRING, &natping_socket        },
  	{"keepalive_timeout",     INT_PARAM, &nh_keepalive_timeout  },
  	{"udpping_from_path",     INT_PARAM, &udpping_from_path     },
 +	{"contact_only",          INT_PARAM, &contact_only          },
  
  	{0, 0, 0}
  };
-@@ -2071,9 +2073,10 @@
+@@ -2060,9 +2062,10 @@
  			goto done;
  		}
  	}
@@ -29,7 +29,7 @@
  	if (rval<0) {
  		LM_ERR("failed to fetch contacts\n");
  		goto done;
-@@ -2087,9 +2090,10 @@
+@@ -2076,9 +2079,10 @@
  			LM_ERR("out of pkg memory\n");
  			goto done;
  		}
@@ -44,7 +44,7 @@
  			goto done;
 --- a/modules/usrloc/dlist.c
 +++ b/modules/usrloc/dlist.c
-@@ -88,10 +88,12 @@
+@@ -93,10 +93,12 @@
   * \param flags contact flags
   * \param part_idx part index
   * \param part_max maximal part
@@ -58,7 +58,7 @@
  {
  	static char query_buf[512];
  	static str query_str;
-@@ -172,7 +174,7 @@
+@@ -173,7 +175,7 @@
  
  			/* received */
  			addr.s = (char*)VAL_STRING(ROW_VALUES(row));
@@ -67,7 +67,7 @@
  				/* contact */
  				addr.s = (char*)VAL_STRING(ROW_VALUES(row)+1);
  				if (VAL_NULL(ROW_VALUES(row)+1) || addr.s==0 || addr.s[0]==0) {
-@@ -293,10 +295,12 @@
+@@ -294,10 +296,12 @@
   * \param flags contact flags
   * \param part_idx part index
   * \param part_max maximal part
@@ -81,7 +81,7 @@
  {
  	dlist_t *p;
  	urecord_t *r;
-@@ -354,7 +358,7 @@
+@@ -355,7 +359,7 @@
  						}
  					}
  
@@ -90,7 +90,7 @@
  						needed = (int)(sizeof(c->received.len)
  								+ c->received.len
  								+ sizeof(c->sock) + sizeof(c->cflags)
-@@ -465,15 +469,33 @@
+@@ -466,15 +470,33 @@
   * \param flags contact flags
   * \param part_idx part index
   * \param part_max maximal part

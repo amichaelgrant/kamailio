@@ -1,0 +1,51 @@
+From db8859587bb5b97637e1f815ab631fc42e8d49c9 Mon Sep 17 00:00:00 2001
+From: Daniel-Constantin Mierla <miconda@gmail.com>
+Date: Fri, 5 Dec 2014 22:40:25 +0100
+Subject: [PATCH] exec: use proper header field iterator to print env variables
+
+- issue introduced with the patch for shellshock
+- reported by and credits for troubleshooting to Kristian Kielhofner
+
+(cherry picked from commit 8855e3e7fcece4ca2ab33e1f9c54b15831152400)
+---
+ modules/exec/exec_hf.c | 16 +++++++++-------
+ 1 file changed, 9 insertions(+), 7 deletions(-)
+
+diff --git a/modules/exec/exec_hf.c b/modules/exec/exec_hf.c
+index bd7a3d4..bed4541 100644
+--- a/modules/exec/exec_hf.c
++++ b/modules/exec/exec_hf.c
+@@ -258,21 +258,23 @@ static int print_hf_var(struct hf_wrapper *w, int offset)
+ 	memcpy(envvar, w->prefix, w->prefix_len); c=envvar+w->prefix_len;
+ 	memcpy(c, hname, hlen ); c+=hlen;
+ 	*c=EV_ASSIGN;c++;
+-	if (exec_bash_safety && !strncmp(w->u.hf->body.s,"() {",MIN(w->u.hf->body.len,4))) {
++	if (exec_bash_safety && !strncmp(w->u.hf->body.s, "() {",
++				MIN(w->u.hf->body.len,4))) {
+ 		memcpy(c, w->u.hf->body.s+offset+2, w->u.hf->body.len-2 );
+ 		c+=(w->u.hf->body.len-2);
+ 	} else {
+ 		memcpy(c, w->u.hf->body.s+offset, w->u.hf->body.len );
+ 		c+=w->u.hf->body.len;
+ 	}
+-	for (wi=w->next_same; wi; wi=wi->next_same) {
++	for(wi=w->next_same; wi; wi=wi->next_same) {
+ 		*c=HF_SEPARATOR;c++;
+-		if (exec_bash_safety && !strncmp(w->u.hf->body.s,"() {",MIN(w->u.hf->body.len,4))) {
+-			memcpy(c, w->u.hf->body.s+offset+2, w->u.hf->body.len-2 );
+-			c+=(w->u.hf->body.len-2);
++		if (exec_bash_safety && !strncmp(wi->u.hf->body.s, "() {",
++					MIN(w->u.hf->body.len,4))) {
++			memcpy(c, wi->u.hf->body.s+offset+2, wi->u.hf->body.len-2 );
++			c+=(wi->u.hf->body.len-2);
+ 		} else {
+-			memcpy(c, w->u.hf->body.s+offset, w->u.hf->body.len );
+-			c+=w->u.hf->body.len;
++			memcpy(c, wi->u.hf->body.s+offset, wi->u.hf->body.len );
++			c+=wi->u.hf->body.len;
+ 		}
+ 	}
+ 	*c=0; /* zero termination */
+-- 
+2.1.3
+

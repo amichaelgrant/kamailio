@@ -574,7 +574,7 @@
  
 --- a/modules/pv/pv_trans.c
 +++ b/modules/pv/pv_trans.c
-@@ -307,6 +307,32 @@
+@@ -338,6 +338,32 @@
  			val->rs.s = _tr_buffer;
  			val->rs.len = i;
  			break;
@@ -607,7 +607,7 @@
  		case TR_S_ESCAPECOMMON:
  			if(!(val->flags&PV_VAL_STR))
  				val->rs.s = int2str(val->ri, &val->rs.len);
-@@ -1926,6 +1952,12 @@
+@@ -1966,6 +1992,12 @@
  	} else if(name.len==13 && strncasecmp(name.s, "decode.base64", 13)==0) {
  		t->subtype = TR_S_DECODEBASE64;
  		goto done;
@@ -623,8 +623,8 @@
 --- a/modules/pv/pv_trans.h
 +++ b/modules/pv/pv_trans.h
 @@ -38,6 +38,7 @@
- 	TR_S_NONE=0, TR_S_LEN, TR_S_INT, TR_S_MD5, TR_S_SUBSTR,
- 	TR_S_SELECT, TR_S_ENCODEHEXA, TR_S_DECODEHEXA,
+ 	TR_S_NONE=0, TR_S_LEN, TR_S_INT, TR_S_MD5, TR_S_SHA256, TR_S_SHA384,
+ 	TR_S_SHA512, TR_S_SUBSTR, TR_S_SELECT, TR_S_ENCODEHEXA, TR_S_DECODEHEXA,
  	TR_S_ENCODEBASE64, TR_S_DECODEBASE64,
 +	TR_S_ENCODEBASE64URL, TR_S_DECODEBASE64URL,
  	TR_S_ESCAPECOMMON, TR_S_UNESCAPECOMMON, TR_S_ESCAPEUSER, TR_S_UNESCAPEUSER,

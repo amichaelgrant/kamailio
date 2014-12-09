@@ -1,0 +1,25 @@
+From 0ac4c8e579214a75b102f2f1c6877dffb2db8597 Mon Sep 17 00:00:00 2001
+From: Juha Heinanen <jh@tutpro.com>
+Date: Wed, 3 Dec 2014 09:13:49 +0200
+Subject: [PATCH] modules/pua: do not override send_publish return value at
+ error
+
+---
+ modules/pua/send_publish.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/modules/pua/send_publish.c b/modules/pua/send_publish.c
+index da74ab7..b0d540c 100644
+--- a/modules/pua/send_publish.c
++++ b/modules/pua/send_publish.c
+@@ -716,7 +716,6 @@ done:
+ 	goto finish;
+ 
+ error:
+-	ret = -1;
+ 	if(cb_param)
+ 		shm_free(cb_param);
+ 
+-- 
+2.1.3
+

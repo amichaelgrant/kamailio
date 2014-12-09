@@ -10,17 +10,15 @@
  # - modules related to SIMPLE presence extensions
  mod_list_presence=presence presence_conference presence_dialoginfo \
  					   presence_mwi presence_profile presence_reginfo \
-@@ -179,7 +182,8 @@
- 			   $(mod_list_outbound) $(mod_list_osp) \
- 			   $(mod_list_java) $(mod_list_dnssec) \
- 			   $(mod_list_sctp) $(mod_list_autheph) \
--			   $(mod_list_gzcompress))
-+			   $(mod_list_gzcompress)) \
-+			   $(mod_list_lcrrate)
+@@ -171,6 +174,7 @@
  
- 
- 
-@@ -233,6 +237,8 @@
+ # - all modules
+ mod_list_all=$(sort $(mod_list_basic) $(mod_list_extra) \
++			   $(mod_list_lcrrate) \
+ 			   $(mod_list_db) $(mod_list_dbuid) \
+ 			   $(mod_list_devel) $(mod_list_pcre) \
+ 			   $(mod_list_radius) $(mod_list_ldap) \
+@@ -247,6 +251,8 @@
  module_group_ignore= $(sort $(filter-out $(module_group_default), $(mod_list_all)))
  
  

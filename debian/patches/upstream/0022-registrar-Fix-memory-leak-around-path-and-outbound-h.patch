@@ -1,0 +1,71 @@
+From 2f04794b8357ccfa1304ce53ff5795c6f4f0ca7f Mon Sep 17 00:00:00 2001
+From: Hugh Waite <hugh.waite@acision.com>
+Date: Tue, 9 Dec 2014 19:05:31 +0000
+Subject: [PATCH] registrar: Fix memory leak around path and outbound header
+ parsing
+
+- Fix leak of parsed URI and URI parameters during a call to save()
+(cherry picked from commit 56c880120c07443eceb732117f0f1aa3558dcfe5)
+---
+ modules/registrar/path.c | 10 ++--------
+ modules/registrar/save.c |  6 +++++-
+ 2 files changed, 7 insertions(+), 9 deletions(-)
+
+diff --git a/modules/registrar/path.c b/modules/registrar/path.c
+index 9f9ed38..0e242e3 100644
+--- a/modules/registrar/path.c
++++ b/modules/registrar/path.c
+@@ -96,6 +96,8 @@ int build_path_vector(struct sip_msg *_m, str *path, str *received)
+ 				LM_ERR("failed to parse parameters of first hop\n");
+ 				goto error;
+ 			}
++			/* Not interested in param body - just the hooks */
++			free_params(params);
+ 
+ 			if (hooks.contact.received) {
+ 			        uri_str.s = uri_buf;
+@@ -107,14 +109,6 @@ int build_path_vector(struct sip_msg *_m, str *path, str *received)
+ 				*received = uri_str;
+ 				LM_DBG("received is <%.*s>\n", received->len, received->s);
+ 			}
+-				
+-			/*for (;params; params = params->next) {
+-				if (params->type == P_RECEIVED) {
+-					*received = hooks.contact.received->body;
+-					break;
+-				}
+-			}*/
+-			free_params(params);
+ 		}
+ 		free_rr(&route);
+ 	}
+diff --git a/modules/registrar/save.c b/modules/registrar/save.c
+index 89a97f6..a3a5b29 100644
+--- a/modules/registrar/save.c
++++ b/modules/registrar/save.c
+@@ -923,17 +923,21 @@ int save(struct sip_msg* _m, udomain_t* _d, int _cflags, str *_uri)
+ 			}
+ 			if (parse_uri(route->nameaddr.uri.s, route->nameaddr.uri.len, &puri) < 0) {
+ 				LM_ERR("Failed to parse Path: URI\n");
++				free_rr(&route);
+ 				goto error;
+ 			}
+ 			if (parse_params(&puri.params, CLASS_URI, &hooks, &params) != 0) {
+ 				LM_ERR("Failed to parse Path: URI parameters\n");
++				free_rr(&route);
+ 				goto error;
+ 			}
++			/* Not interested in param body - just the hooks */
++			free_params(params);
+ 			if (!hooks.uri.ob) {
+ 				/* No ;ob parameter to top Path: URI - no outbound */
+ 				use_ob = 0;
+ 			}
+-
++			free_rr(&route);
+ 		} else {
+ 			/* No Path: header - no outbound */
+ 			use_ob = 0;
+-- 
+2.1.4
+

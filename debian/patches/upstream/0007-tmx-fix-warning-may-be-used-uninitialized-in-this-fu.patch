@@ -1,0 +1,26 @@
+From 15435f96b50a7bf71d321eb925988ebb7498bdf0 Mon Sep 17 00:00:00 2001
+From: Ovidiu Sas <osas@voipembedded.com>
+Date: Thu, 27 Nov 2014 16:45:06 -0500
+Subject: [PATCH] tmx: fix warning: may be used uninitialized in this function
+
+(cherry picked from commit 022ae9be87b11838345a3d22b1170b280aef8aa7)
+---
+ modules/tmx/tmx_pretran.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/modules/tmx/tmx_pretran.c b/modules/tmx/tmx_pretran.c
+index a9c6f2a..1e0f50f 100644
+--- a/modules/tmx/tmx_pretran.c
++++ b/modules/tmx/tmx_pretran.c
+@@ -185,7 +185,7 @@ int tmx_check_pretran(sip_msg_t *msg)
+ 	str scseqmet;
+ 	str scseqnum;
+ 	str sftag;
+-	str svbranch;
++	str svbranch = {NULL, 0};
+ 	pretran_t *it;
+ 
+ 	if(_tmx_ptran_table==NULL) {
+-- 
+2.1.3
+

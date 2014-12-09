@@ -1,0 +1,27 @@
+From fad00aeb2fb96cd9796ef41568e9b3cb535f300c Mon Sep 17 00:00:00 2001
+From: Daniel-Constantin Mierla <miconda@gmail.com>
+Date: Mon, 1 Dec 2014 11:50:15 +0100
+Subject: [PATCH] nat_traversal: use dedicated function for testing via address
+ against source ip
+
+(cherry picked from commit c6c4230fb0c4ca18f5c681c7195d3e1531255f3a)
+---
+ modules/nat_traversal/nat_traversal.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/modules/nat_traversal/nat_traversal.c b/modules/nat_traversal/nat_traversal.c
+index 6fd09d7..2f0ffbe 100644
+--- a/modules/nat_traversal/nat_traversal.c
++++ b/modules/nat_traversal/nat_traversal.c
+@@ -820,7 +820,7 @@ test_source_address(struct sip_msg *msg)
+     Bool different_ip, different_port;
+     int via1_port;
+ 
+-    different_ip = received_test(msg);
++    different_ip = received_via_test(msg);
+     via1_port = (msg->via1->port ? msg->via1->port : SIP_PORT);
+     different_port = (msg->rcv.src_port != via1_port);
+ 
+-- 
+2.1.3
+

@@ -1,0 +1,66 @@
+From 7ebf861b27ae7e90092bc875d75772e5a1c941d5 Mon Sep 17 00:00:00 2001
+From: Daniel-Constantin Mierla <miconda@gmail.com>
+Date: Mon, 1 Dec 2014 11:47:19 +0100
+Subject: [PATCH] core: dedicated function to check Via address with source ip
+
+- received_via_test() as alternative to received_test() which looks also
+  for rport and received parameters, confusing nat detection tests
+
+(cherry picked from commit 194743bf0de92ae09fdc817e57863f6bdb159539)
+---
+ msg_translator.c | 12 +++++++++++-
+ msg_translator.h |  6 +++++-
+ 2 files changed, 16 insertions(+), 2 deletions(-)
+
+diff --git a/msg_translator.c b/msg_translator.c
+index 6f36492..df1a753 100644
+--- a/msg_translator.c
++++ b/msg_translator.c
+@@ -252,7 +252,8 @@ static int check_via_address(struct ip_addr* ip, str *name,
+ }
+ 
+ 
+-/* check if IP address in Via != source IP address of signaling */
++/* check if IP address in Via != source IP address of signaling,
++ * or the sender requires adding rport or received values */
+ int received_test( struct sip_msg *msg )
+ {
+ 	int rcvd;
+@@ -263,6 +264,15 @@ int received_test( struct sip_msg *msg )
+ 	return rcvd;
+ }
+ 
++/* check if IP address in Via != source IP address of signaling */
++int received_via_test( struct sip_msg *msg )
++{
++	int rcvd;
++
++	rcvd = (check_via_address(&msg->rcv.src_ip, &msg->via1->host,
++							msg->via1->port, received_dns)!=0);
++	return rcvd;
++}
+ 
+ static char * warning_builder( struct sip_msg *msg, unsigned int *returned_len)
+ {
+diff --git a/msg_translator.h b/msg_translator.h
+index a87c69b..01b5619 100644
+--- a/msg_translator.h
++++ b/msg_translator.h
+@@ -129,9 +129,13 @@ int branch_builder( unsigned int hash_index,
+ 
+ char* id_builder(struct sip_msg* msg, unsigned int *id_len);
+ 
+-/* check if IP address in Via != source IP address of signaling */
++/* check if IP address in Via != source IP address of signaling,
++ * or the sender is asking to set the values for rport or received */
+ int received_test( struct sip_msg *msg );
+ 
++/* check if IP address in Via != source IP address of signaling */
++int received_via_test( struct sip_msg *msg );
++
+ /* builds a char* buffer from message headers without body
+  * first line is excluded in case of skip_first_line=1
+  */
+-- 
+2.1.3
+

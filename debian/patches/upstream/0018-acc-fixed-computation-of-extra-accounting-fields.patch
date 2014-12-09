@@ -1,0 +1,47 @@
+From 9243615c6a6a4616d5aca621902eac7f0878cb0a Mon Sep 17 00:00:00 2001
+From: Daniel-Constantin Mierla <miconda@gmail.com>
+Date: Sun, 7 Dec 2014 20:26:37 +0100
+Subject: [PATCH] acc: fixed computation of extra accounting fields
+
+- introduced in previous commit
+- reported by and credits for troubleshooting to Anthony Messina
+
+(cherry picked from commit 0cf6fdc78d2171dba8d31370b84da99d8c94fb29)
+---
+ modules/acc/acc.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/modules/acc/acc.c b/modules/acc/acc.c
+index 8eb1acf..7bf7dd7 100644
+--- a/modules/acc/acc.c
++++ b/modules/acc/acc.c
+@@ -229,7 +229,7 @@ int acc_log_request( struct sip_msg *rq)
+ 	char *p;
+ 	int n;
+ 	int m;
+-	int o = 0;
++	int o;
+ 	int i;
+ 	struct tm *t;
+ 
+@@ -237,7 +237,7 @@ int acc_log_request( struct sip_msg *rq)
+ 	m = core2strar( rq, val_arr, int_arr, type_arr);
+ 
+ 	/* get extra values */
+-	o += extra2strar( log_extra, rq, val_arr+m, int_arr+m, type_arr+m);
++	o = extra2strar( log_extra, rq, val_arr+m, int_arr+m, type_arr+m);
+ 	m += o;
+ 
+ 	for ( i=0,p=log_msg ; i<m ; i++ ) {
+@@ -476,7 +476,7 @@ int acc_db_request( struct sip_msg *rq)
+ 	}
+ 
+ 	/* extra columns */
+-	o += extra2strar( db_extra, rq, val_arr+m, int_arr+m, type_arr+m);
++	o = extra2strar( db_extra, rq, val_arr+m, int_arr+m, type_arr+m);
+ 	m += o;
+ 
+ 	for( i++ ; i<m; i++)
+-- 
+2.1.3
+

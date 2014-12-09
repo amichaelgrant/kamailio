@@ -1,0 +1,81 @@
+From 2d88f43202dee40c322755758d8ef1061f58acc3 Mon Sep 17 00:00:00 2001
+From: Luis Azedo <luis@2600hz.com>
+Date: Mon, 5 Jan 2015 13:24:39 +0000
+Subject: [PATCH] kazoo :  fix transform
+
+(cherry picked from commit 767fb51adbaecf37a0812731d9bf63a86f2b3c0e)
+---
+ modules/kazoo/kz_json.c  | 4 ++++
+ modules/kazoo/kz_trans.c | 9 +++++++--
+ 2 files changed, 11 insertions(+), 2 deletions(-)
+
+diff --git a/modules/kazoo/kz_json.c b/modules/kazoo/kz_json.c
+index 2d6c731..9c538b7 100644
+--- a/modules/kazoo/kz_json.c
++++ b/modules/kazoo/kz_json.c
+@@ -30,6 +30,7 @@
+ 
+ #include "kz_json.h"
+ 
++static str kz_pv_str_empty  {"", 0};
+ 
+ char** str_split(char* a_str, const char a_delim)
+ {
+@@ -150,8 +151,11 @@ int kz_json_get_field_ex(str* json, str* field, pv_value_p dst_val)
+ 		dst_val->rs.s[len] = '\0';
+ 		dst_val->rs.len = len;
+ 		dst_val->flags = PV_VAL_STR | PV_VAL_PKG;
++        dst_val->ri = 0;
+ 	} else {
+ 		dst_val->flags = PV_VAL_NULL;
++        dst_val->rs kz_pv_str_empty;
++        dst_val->ri = 0;
+ 	}
+ 
+ 	json_object_put(j);
+diff --git a/modules/kazoo/kz_trans.c b/modules/kazoo/kz_trans.c
+index a753b93..32e38e6 100644
+--- a/modules/kazoo/kz_trans.c
++++ b/modules/kazoo/kz_trans.c
+@@ -133,8 +133,9 @@ int kz_tr_eval(struct sip_msg *msg, tr_param_t *tp, int subtype, pv_value_t *val
+ 				return -1;
+ 			}
+ 
++            /*
+ 			// it seems that val memory is not freed
+-			// event with flag set to PV_VAL_PKG
++			// even with flag set to PV_VAL_PKG
+ 
+ 			strncpy(_kz_tr_buffer, val->rs.s, val->rs.len);
+ 			if(val->flags & PV_VAL_PKG)
+@@ -145,6 +146,7 @@ int kz_tr_eval(struct sip_msg *msg, tr_param_t *tp, int subtype, pv_value_t *val
+ 			val->flags = PV_VAL_STR;
+ 			val->ri = 0;
+ 			val->rs.s = _kz_tr_buffer;
++            */
+ 
+ 			if(oldflags & PV_VAL_PKG) {
+ 				pkg_free(tofree);
+@@ -168,8 +170,10 @@ int kz_tr_eval(struct sip_msg *msg, tr_param_t *tp, int subtype, pv_value_t *val
+ 				LM_ERR("error getting json\n");
+ 				return -1;
+ 			}
++            
++            /*
+ 			// it seems that val memory is not freed
+-			// event with flag set to PV_VAL_PKG
++			// even with flag set to PV_VAL_PKG
+ 
+ 			strncpy(_kz_tr_buffer, val->rs.s, val->rs.len);
+ 			if(val->flags & PV_VAL_PKG)
+@@ -180,6 +184,7 @@ int kz_tr_eval(struct sip_msg *msg, tr_param_t *tp, int subtype, pv_value_t *val
+ 			val->flags = PV_VAL_STR;
+ 			val->ri = 0;
+ 			val->rs.s = _kz_tr_buffer;
++            */
+ 
+ 			if(oldflags & PV_VAL_PKG) {
+ 				pkg_free(tofree);
+-- 
+2.1.4
+

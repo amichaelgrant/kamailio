@@ -1,0 +1,53 @@
+From ca60c77acddc13d36ab691f8cac1f566323f6d86 Mon Sep 17 00:00:00 2001
+From: "Olle E. Johansson" <oej@edvina.net>
+Date: Thu, 13 Nov 2014 12:16:25 +0100
+Subject: [PATCH] app_python	Avoid collission in name space - rename
+ init_modules to ap_init_modules
+
+---
+ modules/app_python/python_iface.c | 2 +-
+ modules/app_python/python_iface.h | 2 +-
+ modules/app_python/python_mod.c   | 2 +-
+ 3 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/modules/app_python/python_iface.c b/modules/app_python/python_iface.c
+index a98ac48..4993757 100644
+--- a/modules/app_python/python_iface.c
++++ b/modules/app_python/python_iface.c
+@@ -43,7 +43,7 @@
+ #include "mod_Logger.h"
+ 
+ 
+-int init_modules(void)
++int ap_init_modules(void)
+ {
+     init_mod_Router();
+     init_mod_Core();
+diff --git a/modules/app_python/python_iface.h b/modules/app_python/python_iface.h
+index 9219213..b01b115 100644
+--- a/modules/app_python/python_iface.h
++++ b/modules/app_python/python_iface.h
+@@ -26,6 +26,6 @@
+ #include <Python.h>
+ 
+ extern PyMethodDef RouterMethods[];
+-int init_modules(void);
++int ap_init_modules(void);
+ 
+ #endif
+diff --git a/modules/app_python/python_mod.c b/modules/app_python/python_mod.c
+index 7f23994..74aa1ef 100644
+--- a/modules/app_python/python_mod.c
++++ b/modules/app_python/python_mod.c
+@@ -156,7 +156,7 @@ static int mod_init(void)
+     PyList_Insert(sys_path, 0, pDir);
+     Py_DECREF(pDir);
+ 
+-    if (init_modules() != 0) {
++    if (ap_init_modules() != 0) {
+ 	if (!PyErr_Occurred())
+ 	    PyErr_SetString(PyExc_AttributeError, "init_modules() has failed");
+ 	python_handle_exception("mod_init");
+-- 
+2.1.3
+

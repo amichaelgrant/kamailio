@@ -1,0 +1,57 @@
+From 725501d7a96348f08376646112bd58c009b4b06f Mon Sep 17 00:00:00 2001
+From: "Olle E. Johansson" <oej@edvina.net>
+Date: Mon, 8 Dec 2014 13:22:38 +0100
+Subject: [PATCH] pv Update error in docs.
+
+---
+ modules/pv/README           | 4 ++--
+ modules/pv/doc/pv_admin.xml | 4 ++--
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/modules/pv/README b/modules/pv/README
+index edfd000..fafee35 100644
+--- a/modules/pv/README
++++ b/modules/pv/README
+@@ -199,7 +199,7 @@ modparam("pv","avp_aliases","email=s:email_addr;tmp=i:100")
+ 
+    Example 1.4. pv_isset usage
+ ...
+-if(pv_isset("$avp("s:x")"))
++if(pv_isset("$avp(s:x)"))
+ {
+     ...
+ }
+@@ -216,7 +216,7 @@ if(pv_isset("$avp("s:x")"))
+ 
+    Example 1.5. pv_unset usage
+ ...
+-pv_unset("$avp("s:x")");
++pv_unset("$avp(s:x)");
+ ...
+ 
+ 4.3. is_int(pvar)
+diff --git a/modules/pv/doc/pv_admin.xml b/modules/pv/doc/pv_admin.xml
+index c3f97cc..739ccbb 100644
+--- a/modules/pv/doc/pv_admin.xml
++++ b/modules/pv/doc/pv_admin.xml
+@@ -166,7 +166,7 @@ modparam("pv","avp_aliases","email=s:email_addr;tmp=i:100")
+ 		<title><function>pv_isset</function> usage</title>
+ 		<programlisting format="linespecific">
+ ...
+-if(pv_isset("$avp("s:x")"))
++if(pv_isset("$avp(s:x)"))
+ {
+     ...
+ }
+@@ -194,7 +194,7 @@ if(pv_isset("$avp("s:x")"))
+ 		<title><function>pv_unset</function> usage</title>
+ 		<programlisting format="linespecific">
+ ...
+-pv_unset("$avp("s:x")");
++pv_unset("$avp(s:x)");
+ ...
+ </programlisting>
+ 		</example>
+-- 
+2.1.3
+
