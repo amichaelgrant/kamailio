@@ -28,15 +28,14 @@ upstream/0026-dispatcher-readme-file-updated.patch
 upstream/0027-pkg-kamailio-Initial-Travis-CI-configuration.patch
 upstream/0028-kazoo-fork-process-with-tcp-option.patch
 upstream/0029-kazoo-fix-transform.patch
+# dialplan MT#6981
+upstream/0001-dialplan-option-to-allow-variables-in-match-and-subs.patch
+upstream/0002-dialplan-documentation-for-match_dynamic-parameter.patch
 #
 no_lib64_on_64_bits.patch
 no_INSTALL_file.patch
 fix_export.patch
 sipwise/do-not-install-default-config.patch
-# dialplan MT#6981
-#sipwise/0001-core-new-pv_check_format-function.patch
-#sipwise/dialplan_pv_rules.patch
-#sipwise/dialplan-use-AVP-values-at-match-expresion-one-by-on.patch
 sipwise/add_pcem_module.patch
 sipwise/lcr_rate_module.patch
 sipwise/nathelper.contact_only.patch
