@@ -1,0 +1,30 @@
+From 0d76d017708659d062eb0f7e8b63e59826431224 Mon Sep 17 00:00:00 2001
+From: Victor Seva <linuxmaniac@torreviejawireless.org>
+Date: Mon, 5 Jan 2015 12:29:40 +0100
+Subject: [PATCH] dialplan: don't check subexpressions on expressions with pvs
+
+(cherry picked from commit e84e9d3a7548e5b2e9d202a6c33f338338d46722)
+---
+ modules/dialplan/dp_db.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/modules/dialplan/dp_db.c b/modules/dialplan/dp_db.c
+index 1db9d7d..b6f8612 100644
+--- a/modules/dialplan/dp_db.c
++++ b/modules/dialplan/dp_db.c
+@@ -413,8 +413,10 @@ dpl_node_t * build_rule(db_val_t * values)
+ 	LM_DBG("building rule for [%d:%.*s/%.*s/%.*s]\n", matchop,
+ 			match_exp.len, ZSW(match_exp.s), subst_exp.len, ZSW(subst_exp.s),
+ 			repl_exp.len, ZSW(repl_exp.s));
+-	if (repl_comp && (cap_cnt < repl_comp->max_pmatch) && 
+-			(repl_comp->max_pmatch != 0)) {
++	if (!(tflags&(DP_TFLAGS_PV_SUBST|DP_TFLAGS_PV_MATCH)) &&
++		repl_comp && (cap_cnt < repl_comp->max_pmatch) &&
++		(repl_comp->max_pmatch != 0))
++	{
+ 		LM_ERR("repl_exp %.*s refers to %d sub-expressions, but "
+ 				"subst_exp %.*s has only %d\n",
+ 				repl_exp.len, repl_exp.s, repl_comp->max_pmatch,
+-- 
+2.1.4
+

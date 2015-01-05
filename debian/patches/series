@@ -31,6 +31,9 @@ upstream/0029-kazoo-fix-transform.patch
 # dialplan MT#6981
 upstream/0001-dialplan-option-to-allow-variables-in-match-and-subs.patch
 upstream/0002-dialplan-documentation-for-match_dynamic-parameter.patch
+upstream/0001-dialplan-don-t-check-subexpressions-on-expressions-w.patch
+sipwise/0001-dialplan-using-avp-key-on-match-rules.patch
+sipwise/0002-dialplan-using-avp-key-on-subst-rules.patch
 #
 no_lib64_on_64_bits.patch
 no_INSTALL_file.patch
